@@ -13,6 +13,9 @@ export const useDataStore = defineStore('data', {
     bouquets: [],
     bouquets_total: 0,
 
+    materials: [],
+    materials_total: 0,
+
     // Поставщики
     suppliers: [],
     suppliers_total: 0,
@@ -43,6 +46,7 @@ export const useDataStore = defineStore('data', {
     // Графики работы
     schedules: [],
     schedules_total: 0,
+
 
     // Общие
     loading: false,
@@ -455,22 +459,90 @@ export const useDataStore = defineStore('data', {
 
     // ==================== ЭЛЕМЕНТЫ БУКЕТОВ ====================
 
-    async get_bouquet_items() {
+    // ==================== ЭЛЕМЕНТЫ БУКЕТОВ (BOUQUET ITEMS) ====================
+
+    async get_bouquet_items(bouquetId = null) {
       this.loading = true;
       this.errorMessage = "";
       try {
-        const response = await api.get('/bouquet-items');
-        this.bouquetItems = (response.data && Array.isArray(response.data.data)) ? response.data.data : [];
+        let url = '/bouquet-item';
+        if (bouquetId) {
+          url += `?bouquet_id=${bouquetId}`;
+        }
+        const response = await api.get(url);
+
+        let items = [];
+        if (response.data.success) {
+          items = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          items = response.data;
+        }
+
+        this.bouquetItems = items;
+        return items;
       } catch (error) {
         console.error('Ошибка загрузки состава букетов:', error);
-        if (error.response) {
-          this.errorMessage = error.response.data.message || "Ошибка загрузки состава букетов";
-        } else if (error.request) {
-          this.errorMessage = "Нет ответа от сервера";
-        } else {
-          this.errorMessage = error.message;
-        }
         this.bouquetItems = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async create_bouquet_item(data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.post('/bouquet-item', data);
+
+        if (response.data.success) {
+          await this.get_bouquet_items(data.bouquet_id);
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка добавления цветка в букет:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка добавления цветка";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async update_bouquet_item(id, data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.put(`/bouquet-item/${id}`, data);
+
+        if (response.data.success) {
+          await this.get_bouquet_items();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка обновления состава букета:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка обновления";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async delete_bouquet_item(id) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.delete(`/bouquet-item/${id}`);
+
+        if (response.data.success) {
+          await this.get_bouquet_items();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка удаления цветка из букета:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка удаления";
+        throw error;
       } finally {
         this.loading = false;
       }
@@ -595,7 +667,7 @@ export const useDataStore = defineStore('data', {
       this.loading = true;
       this.errorMessage = "";
       try {
-        const response = await api.get( '/order');
+        const response = await api.get('/order');
 
         let orders = [];
         if (response.data.success) {
@@ -604,11 +676,13 @@ export const useDataStore = defineStore('data', {
           orders = response.data;
         }
 
-        // Фильтрация по поиску (по имени клиента или телефону)
+        // Фильтрация по поиску (по имени клиента, телефону, адресу)
         if (search && orders.length) {
+          const searchLower = search.toLowerCase();
           orders = orders.filter(order =>
-            (order.client_name && order.client_name.toLowerCase().includes(search.toLowerCase())) ||
-            (order.client_phone && order.client_phone.includes(search))
+            (order.client_name && order.client_name.toLowerCase().includes(searchLower)) ||
+            (order.client_phone && order.client_phone.includes(search)) ||
+            (order.delivery_address && order.delivery_address.toLowerCase().includes(searchLower))
           );
         }
 
@@ -659,9 +733,16 @@ export const useDataStore = defineStore('data', {
       this.errorMessage = "";
       this.loading = true;
       try {
-        console.log('Отправляемые данные:', orderData);
+        // Добавляем user_id текущего пользователя
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        const orderWithUser = {
+          ...orderData,
+          user_id: user.id || null
+        }
 
-        const response = await api.post('/order', orderData, {
+        console.log('Отправляемые данные:', orderWithUser);
+
+        const response = await api.post('/order', orderWithUser, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -676,25 +757,21 @@ export const useDataStore = defineStore('data', {
       } catch (error) {
         console.error('Ошибка создания заказа:', error);
         if (error.response) {
-          // Показываем подробную ошибку валидации
           console.error('Статус:', error.response.status);
           console.error('Данные ошибки:', error.response.data);
 
           if (error.response.status === 422) {
             const errors = error.response.data.errors;
+            console.log('=== ПОЛНАЯ ОШИБКА ВАЛИДАЦИИ ===')
+            console.log(JSON.stringify(errors, null, 2))
             let errorMessage = 'Ошибка валидации:\n';
             if (errors) {
               for (let field in errors) {
                 errorMessage += `${field}: ${errors[field].join(', ')}\n`;
               }
-            } else if (error.response.data.message) {
-              errorMessage = error.response.data.message;
-            } else {
-              errorMessage = JSON.stringify(error.response.data);
             }
-            this.errorMessage = errorMessage;
-            alert(errorMessage); // Показываем alert для наглядности
-          } else {
+            alert(errorMessage)
+          }else {
             this.errorMessage = error.response.data.message || "Ошибка создания заказа";
             alert(this.errorMessage);
           }
@@ -706,15 +783,15 @@ export const useDataStore = defineStore('data', {
           console.error(error);
         }
         throw error;
-       } finally {
-         this.loading = false;
-       }
+      } finally {
+        this.loading = false;
+      }
     },
 
     async update_order(id, data) {
       this.errorMessage = "";
       try {
-        const response = await api.put( `/order/${id}`, data, {
+        const response = await api.put(`/order/${id}`, data, {
           headers: {
             'Content-Type': 'application/json',
           }
@@ -743,7 +820,7 @@ export const useDataStore = defineStore('data', {
     async delete_order(id) {
       this.errorMessage = "";
       try {
-        const response = await api.delete( `/order/${id}`);
+        const response = await api.delete(`/order/${id}`);
 
         if (response.data.success) {
           await this.get_orders();
@@ -865,6 +942,24 @@ export const useDataStore = defineStore('data', {
         throw error;
       }
     },
+
+    async complete_order(id) {
+      this.errorMessage = "";
+      try {
+        const response = await api.post(`/order/${id}/complete`);
+
+        if (response.data.success) {
+          await this.get_orders();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка завершения заказа:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка";
+        throw error;
+      }
+    },
+
 
 
     // ==================== ПОЛЬЗОВАТЕЛИ (СОТРУДНИКИ) ====================
@@ -1506,6 +1601,140 @@ export const useDataStore = defineStore('data', {
           this.errorMessage = error.message;
           console.error(error);
         }
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ==================== МАТЕРИАЛЫ ====================
+
+    async get_materials(search = '') {
+      this.loading = true;
+      this.errorMessage = "";
+      try {
+        const response = await api.get('/material');
+
+        let materials = [];
+        if (response.data.success) {
+          materials = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          materials = response.data;
+        } else {
+          materials = [];
+        }
+
+        if (search && materials.length) {
+          materials = materials.filter(material =>
+            material.name && material.name.toLowerCase().includes(search.toLowerCase())
+          );
+        }
+
+        this.materials = materials;
+        this.materials_total = materials.length;
+      } catch (error) {
+        console.error('Ошибка загрузки материалов:', error);
+        this.materials = [];
+        this.materials_total = 0;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async create_material(data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.post('/material', data);
+
+        if (response.data.success) {
+          await this.get_materials();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка создания материала:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка создания материала";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async update_material(id, data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.put(`/material/${id}`, data);
+
+        if (response.data.success) {
+          await this.get_materials();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка обновления материала:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка обновления материала";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async delete_material(id) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.delete(`/material/${id}`);
+
+        if (response.data.success) {
+          await this.get_materials();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка удаления материала:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка удаления материала";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async incoming_material(id, data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.post(`/material/${id}/incoming`, data);
+
+        if (response.data.success) {
+          await this.get_materials();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка прихода материала:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка прихода материала";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async outgoing_material(id, data) {
+      this.errorMessage = "";
+      this.loading = true;
+      try {
+        const response = await api.post(`/material/${id}/outgoing`, data);
+
+        if (response.data.success) {
+          await this.get_materials();
+          return response.data;
+        }
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка расхода материала:', error);
+        this.errorMessage = error.response?.data?.message || "Ошибка расхода материала";
         throw error;
       } finally {
         this.loading = false;

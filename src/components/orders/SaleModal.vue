@@ -6,7 +6,17 @@
         <button class="close-btn" @click="close">X</button>
       </div>
 
+
       <div class="modal-body">
+        <div class="form-group">
+          <label> Сотрудник:</label>
+          <select v-model="localSale.user_id" class="form-input">
+            <option :value="null">Выберите сотрудника</option>
+            <option v-for="user in users" :key="user.id" :value="user.id">
+              {{ getUserFullName(user) }}
+            </option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Клиент из CRM:</label>
           <select v-model="localSale.client_id" class="form-input">
@@ -86,7 +96,8 @@ const props = defineProps({
   show: Boolean,
   clients: Array,
   flowers: Array,
-  bouquets: Array
+  bouquets: Array,
+  users: Array
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -96,6 +107,7 @@ const localSale = ref({
   client_name: '',
   client_phone: '',
   payment_method: null,
+  user_id: null,
   comment: '',
   items: [{ type: 'flower', id: null, quantity: 1 }]
 })
@@ -183,6 +195,27 @@ const save = () => {
   }
 
   emit('save', saleData)
+}
+
+const getUserFullName = (user) => {
+  // Используем аксессор full_name, который уже есть в модели
+  if (user.full_name) {
+    const fullName = user.full_name.trim()
+    if (fullName && user.role) {
+      return `${fullName} (${user.role.name})`
+    }
+    return fullName
+  }
+
+  // Если full_name нет, собираем вручную
+  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+  const roleName = user.role?.name || ''
+
+  if (name && roleName) {
+    return `${name} (${roleName})`
+  }
+
+  return name || user.email?.split('@')[0] || 'Сотрудник'
 }
 
 const close = () => {

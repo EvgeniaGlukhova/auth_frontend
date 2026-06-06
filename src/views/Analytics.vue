@@ -57,7 +57,7 @@
         <div class="features">
           <p>По продажам</p>
           <p>По заказам</p>
-          <p>Выгрузка в Excel</p>
+          <p>По клиентам</p>
         </div>
         <button class="card-btn">Формирование</button>
       </div>

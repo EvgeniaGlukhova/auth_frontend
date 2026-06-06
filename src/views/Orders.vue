@@ -28,15 +28,12 @@
 
     <!-- Календарь дней -->
     <div class="calendar-bar">
-      <button
-        v-for="day in weekDays"
-        :key="day.fullDate"
-        :class="{ active: selectedDate === day.fullDate }"
-        @click="selectDate(day.fullDate)"
-      >
-        <div class="day-week">{{ day.weekday }}</div>
-        <div class="day-date">{{ day.displayDate }}</div>
-      </button>
+      <input
+        type="date"
+        v-model="selectedDate"
+        @change="selectDate(selectedDate)"
+        class="date-picker-input"
+      />
     </div>
 
     <!-- Канбан-доска -->
@@ -109,6 +106,7 @@
             :order="order"
             type="ready"
             @status-change="updateOrderStatus"
+            @complete-order="completeOrder"
             @view-details="viewOrderDetails"
           />
         </div>
@@ -138,6 +136,7 @@
       :clients="dataStore.clients"
       :flowers="dataStore.flowers"
       :bouquets="dataStore.bouquets"
+      :users="dataStore.users"
       :selected-date="selectedDate"
       @close="showCreateOrderModal = false"
       @save="handleCreateOrder"
@@ -148,6 +147,7 @@
       :clients="dataStore.clients"
       :flowers="dataStore.flowers"
       :bouquets="dataStore.bouquets"
+      :users="dataStore.users"
       @close="showSaleModal = false"
       @save="handleSale"
     />
@@ -157,6 +157,7 @@
       :order="selectedOrder"
       @close="closeDetailsModal"
       @status-change="updateOrderStatus"
+      @complete-order="completeOrderFromModal"
     />
 
     <!-- Сообщение об ошибке -->
@@ -282,6 +283,35 @@ const completedOrders = computed(() => {
   )
 })
 
+// Завершить заказ (списать товары)
+const completeOrder = async (orderId) => {
+  if (confirm('Выдать заказ? Товары будут списаны со склада')) {
+    try {
+      await dataStore.complete_order(orderId)
+      await loadOrdersForDate()
+      alert('Заказ выдан, товары списаны со склада')
+    } catch (error) {
+      console.error('Ошибка:', error)
+      alert(error.response?.data?.message || 'Ошибка при списании товаров')
+    }
+  }
+}
+
+// Завершить заказ из модального окна
+const completeOrderFromModal = async (orderId) => {
+  if (confirm('Выдать заказ? Товары будут списаны со склада')) {
+    try {
+      await dataStore.complete_order(orderId)
+      await loadOrdersForDate()
+      closeDetailsModal()
+      alert('Заказ выдан, товары списаны со склада')
+    } catch (error) {
+      console.error('Ошибка:', error)
+      alert(error.response?.data?.message || 'Ошибка при списании товаров')
+    }
+  }
+}
+
 // Выбрать дату
 const selectDate = (date) => {
   selectedDate.value = date
@@ -364,6 +394,7 @@ onMounted(async () => {
   await dataStore.get_clients()
   await dataStore.get_flowers()
   await dataStore.get_bouquets()
+  await dataStore.get_users()
 })
 </script>
 
@@ -459,37 +490,30 @@ onMounted(async () => {
 }
 
 .calendar-bar {
-  display: flex;
-  gap: 10px;
   margin-bottom: 30px;
-  overflow-x: auto;
-  padding-bottom: 10px;
 }
 
-.calendar-bar button {
-  min-width: 70px;
-  padding: 10px;
-  background: #e0e0e0;
-  border: 1px solid #cccccc;
+.date-picker-input {
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s;
-  color: #000000;
+  font-family: inherit;
+  color: #333;
+  outline: none;
 }
 
-.calendar-bar button.active {
-  background: #cccccc;
-  color: #000000;
-  border-color: #999999;
+.date-picker-input:hover {
+  border-color: #555555;
+
 }
 
-.day-week {
-  font-size: 12px;
-  font-weight: bold;
-}
+.date-picker-input:focus {
+  border-color: #555555;
 
-.day-date {
-  font-size: 16px;
 }
 
 .kanban-board {

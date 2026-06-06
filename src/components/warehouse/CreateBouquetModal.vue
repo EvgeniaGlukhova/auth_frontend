@@ -61,6 +61,17 @@
         <input v-model.number="localData.quantity" type="number" class="form-input">
       </div>
 
+      <!-- Выбор сотрудника -->
+      <div class="form-group">
+        <label>Сотрудник (кто собирает):</label>
+        <select v-model="localData.user_id" class="form-input">
+          <option :value="null">Выберите сотрудника</option>
+          <option v-for="user in users" :key="user.id" :value="user.id">
+            {{ getFullName(user) }} ({{ getRoleName(user) }})
+          </option>
+        </select>
+      </div>
+
       <div class="form-group">
         <label>Описание:</label>
         <textarea v-model="localData.description" class="form-input" rows="2" placeholder="Нежный букет из красных роз..."></textarea>
@@ -85,10 +96,15 @@ const props = defineProps({
       price: 0,
       composition: [{ flower_id: null, quantity: 0 }],
       quantity: 1,
-      description: ''
+      description: '',
+      user_id: null
     })
   },
   flowers: {
+    type: Array,
+    default: () => []
+  },
+  users: {
     type: Array,
     default: () => []
   }
@@ -101,7 +117,8 @@ const localData = reactive({
   price: 0,
   composition: [{ flower_id: null, quantity: 0 }],
   quantity: 1,
-  description: ''
+  description: '',
+  user_id: null
 })
 
 watch(() => props.initialData, (newVal) => {
@@ -110,7 +127,24 @@ watch(() => props.initialData, (newVal) => {
   localData.composition = newVal.composition ? [...newVal.composition] : [{ flower_id: null, quantity: 0 }]
   localData.quantity = newVal.quantity
   localData.description = newVal.description
+  localData.user_id = newVal.user_id
 }, { immediate: true, deep: true })
+
+const getFullName = (user) => {
+  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+  return name || user.email?.split('@')[0] || 'Сотрудник'
+}
+
+const getRoleName = (user) => {
+  const roles = {
+    1: 'Администратор',
+    2: 'Флорист',
+    3: 'Продавец',
+    4: 'Продавец-флорист',
+    5: 'Курьер'
+  }
+  return roles[user.role_id] || 'Сотрудник'
+}
 
 const getFlowerQuantity = (flowerId) => {
   const flower = props.flowers.find(f => f.id === flowerId)
@@ -126,6 +160,22 @@ const removeItem = (index) => {
 }
 
 const handleConfirm = () => {
+  if (!localData.name) {
+    alert('Введите название букета')
+    return
+  }
+  if (!localData.price || localData.price <= 0) {
+    alert('Введите цену букета')
+    return
+  }
+  if (!localData.user_id) {
+    alert('Выберите сотрудника, который собирает букет')
+    return
+  }
+  if (localData.composition.length === 0 || !localData.composition[0].flower_id) {
+    alert('Добавьте хотя бы один цветок в состав букета')
+    return
+  }
   emit('confirm', { ...localData })
 }
 </script>

@@ -23,10 +23,17 @@
       </button>
       <button
         v-if="type === 'ready'"
-        @click="$emit('status-change', order.id, 'completed')"
-        class="action-btn"
+        @click="$emit('complete-order', order.id)"
+        class="action-btn complete-btn"
       >
         Выдан
+      </button>
+      <button
+        v-if="type === 'assembly'"
+        @click="$emit('status-change', order.id, 'ready')"
+        class="action-btn assemble-btn"
+      >
+        Готово
       </button>
       <button
         @click="$emit('view-details', order)"
@@ -150,5 +157,14 @@ const getTimeText = () => {
 
 .details-btn:hover {
   background-color: #cccccc;
+}
+
+.complete-btn {
+  background-color: #e0e0e0;
+  color: white;
+}
+
+.complete-btn:hover {
+  background-color: #e0e0e0;
 }
 </style>

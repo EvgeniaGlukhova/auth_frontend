@@ -8,22 +8,23 @@
 
       <div class="form-group">
         <label>Товар:</label>
-        <select v-model="localData.product_id" class="form-input">
+        <select v-model="selectedUniqueId" class="form-input" @change="onProductChange">
           <option :value="null">Выберите товар</option>
-          <option v-for="product in allProducts" :key="product.id" :value="product.id">
-            {{ product.name }} (остаток: {{ product.quantity || 0 }} шт)
+          <option v-for="product in allProducts" :key="product.uniqueId" :value="product.uniqueId">
+            {{ product.name }}
+            (остаток: {{ product.quantity || 0 }} шт)
           </option>
         </select>
       </div>
 
       <div class="form-group">
         <label>Количество (шт):</label>
-        <input v-model.number="localData.quantity" type="number" class="form-input">
+        <input v-model.number="quantity" type="number" class="form-input">
       </div>
 
       <div class="form-group">
         <label>Причина списания:</label>
-        <select v-model="localData.reason" class="form-input">
+        <select v-model="reason" class="form-input">
           <option value="Продажа">Продажа</option>
           <option value="Брак / испорченный товар">Брак / испорченный товар</option>
           <option value="Инвентаризация">Инвентаризация</option>
@@ -34,15 +35,15 @@
 
       <div class="form-group">
         <label>Дата списания:</label>
-        <input v-model="localData.writeoff_date" type="date" class="form-input">
+        <input v-model="writeoff_date" type="date" class="form-input">
       </div>
 
       <div class="form-group">
         <label>Комментарий:</label>
-        <textarea v-model="localData.comment" class="form-input" rows="2" placeholder="Заказ 145 - 10 роз"></textarea>
+        <textarea v-model="comment" class="form-input" rows="2" placeholder="Заказ 145 - 10 роз"></textarea>
       </div>
 
-      <div class="info-box" v-if="selectedProduct && localData.quantity > 0">
+      <div class="info-box" v-if="selectedProduct && quantity > 0">
         <span v-if="newQuantity >= 0">
           После списания остаток товара составит: {{ newQuantity }} шт
         </span>
@@ -60,53 +61,79 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  initialData: {
-    type: Object,
-    default: () => ({
-      product_id: null,
-      quantity: 0,
-      reason: 'Продажа',
-      writeoff_date: new Date().toISOString().split('T')[0],
-      comment: ''
-    })
-  },
-  allProducts: {
-    type: Array,
-    default: () => []
-  }
+  initialData: Object,
+  allProducts: Array
 })
 
 const emit = defineEmits(['close', 'confirm'])
 
-const localData = reactive({ ...props.initialData })
+const selectedUniqueId = ref(null)
+const quantity = ref(1)
+const reason = ref('Продажа')
+const writeoff_date = ref(new Date().toISOString().split('T')[0])
+const comment = ref('')
 
 watch(() => props.initialData, (newVal) => {
-  localData.product_id = newVal.product_id
-  localData.quantity = newVal.quantity
-  localData.reason = newVal.reason
-  localData.writeoff_date = newVal.writeoff_date
-  localData.comment = newVal.comment
-}, { deep: true })
+  if (newVal && newVal.product_id && newVal.product_type) {
+    selectedUniqueId.value = `${newVal.product_type}_${newVal.product_id}`
+  } else {
+    selectedUniqueId.value = null
+  }
+  quantity.value = newVal?.quantity || 1
+  reason.value = newVal?.reason || 'Продажа'
+  writeoff_date.value = newVal?.writeoff_date || new Date().toISOString().split('T')[0]
+  comment.value = newVal?.comment || ''
+}, { immediate: true, deep: true })
 
 const selectedProduct = computed(() => {
-  return props.allProducts.find(p => p.id === localData.product_id)
+  if (!selectedUniqueId.value) return null
+  return props.allProducts?.find(p => p.uniqueId === selectedUniqueId.value)
 })
 
 const newQuantity = computed(() => {
   if (!selectedProduct.value) return 0
-  return (selectedProduct.value.quantity || 0) - (localData.quantity || 0)
+  return (selectedProduct.value.quantity || 0) - (quantity.value || 0)
 })
 
+const onProductChange = () => {
+  console.log('Выбран товар для расхода:', selectedUniqueId.value)
+  console.log('selectedProduct:', selectedProduct.value)
+}
+
 const handleConfirm = () => {
-  if (newQuantity.value >= 0) {
-    emit('confirm', { ...localData })
+  if (!selectedUniqueId.value) {
+    alert('Выберите товар')
+    return
   }
+  if (!quantity.value || quantity.value <= 0) {
+    alert('Укажите количество')
+    return
+  }
+
+  const product = selectedProduct.value
+  if (!product) {
+    alert('Товар не найден')
+    return
+  }
+
+  if (quantity.value > product.quantity) {
+    alert(`Недостаточно товара! Доступно: ${product.quantity} шт`)
+    return
+  }
+
+  emit('confirm', {
+    product_id: product.id,
+    product_type: product.type,
+    quantity: quantity.value,
+    reason: reason.value,
+    writeoff_date: writeoff_date.value,
+    comment: comment.value
+  })
 }
 </script>
-
 <style scoped>
 .modal-overlay {
   position: fixed;

@@ -27,7 +27,7 @@
               <input type="date" v-model="customEndDate" @change="loadAllData">
             </div>
             <div class="month-selector" v-if="selectedPeriod === 'month'">
-              <input type="month" v-model="selectedMonth" @change="loadTopProducts">
+              <input type="month" v-model="selectedMonth" @change="loadAllData">
             </div>
           </div>
 
@@ -109,10 +109,6 @@
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button @click="$emit('close')" class="close-modal-btn">Закрыть</button>
-      </div>
-
       <div class="loading-overlay" v-if="loading">
         <div class="spinner"></div>
       </div>
@@ -140,6 +136,8 @@ const topProductsChartCanvas = ref(null)
 const ordersStatusChartCanvas = ref(null)
 const flowerMovementsChartCanvas = ref(null)
 const employeeSalesChartCanvas = ref(null)
+const revenueChartData = ref([])
+const revenueChartLabels = ref([])
 
 // Объекты графиков
 let revenueChart = null
@@ -181,12 +179,48 @@ const formatMoney = (value) => {
   return new Intl.NumberFormat('ru-RU').format(value) + ' руб'
 }
 
+// Получить параметры для выручки, клиентов, заказов (отправляем date)
+const getStatsParams = () => {
+  const params = { period: selectedPeriod.value }
+
+  if (selectedPeriod.value === 'month') {
+    params.date = `${selectedMonth.value}-01`
+  }
+  else if (selectedPeriod.value === 'day' || selectedPeriod.value === 'week') {
+    params.date = new Date().toISOString().split('T')[0]
+  }
+
+  return params
+}
+
+// Получить параметры для движений цветов, смен, продаж сотрудников (отправляем start_date/end_date)
+const getMovementsParams = () => {
+  const params = {}
+
+  if (selectedPeriod.value === 'month') {
+    const [year, month] = selectedMonth.value.split('-')
+    params.start_date = `${year}-${month}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    params.end_date = `${year}-${month}-${lastDay}`
+  }
+  else if (selectedPeriod.value === 'day') {
+    const today = new Date().toISOString().split('T')[0]
+    params.start_date = today
+    params.end_date = today
+  }
+  else if (selectedPeriod.value === 'custom') {
+    if (customStartDate.value) params.start_date = customStartDate.value
+    if (customEndDate.value) params.end_date = customEndDate.value
+  }
+
+  return params
+}
+
 // Загрузка выручки
 const loadRevenue = async () => {
   try {
-    const response = await api.get('/reports/revenue', {
-      params: { period: selectedPeriod.value }
-    })
+    const params = getStatsParams()
+    const response = await api.get('/reports/revenue', { params })
     revenue.value = response.data.revenue || 0
   } catch (error) {
     console.error('Ошибка загрузки выручки:', error)
@@ -196,9 +230,8 @@ const loadRevenue = async () => {
 // Загрузка статистики клиентов
 const loadClientsStat = async () => {
   try {
-    const response = await api.get('/reports/clients', {
-      params: { period: selectedPeriod.value }
-    })
+    const params = getStatsParams()
+    const response = await api.get('/reports/clients', { params })
     clientsStat.value = response.data
   } catch (error) {
     console.error('Ошибка загрузки статистики клиентов:', error)
@@ -208,9 +241,8 @@ const loadClientsStat = async () => {
 // Загрузка статистики заказов
 const loadOrdersStat = async () => {
   try {
-    const response = await api.get('/reports/orders', {
-      params: { period: selectedPeriod.value }
-    })
+    const params = getStatsParams()
+    const response = await api.get('/reports/orders', { params })
     ordersStat.value = response.data.data || {}
   } catch (error) {
     console.error('Ошибка загрузки статистики заказов:', error)
@@ -218,11 +250,25 @@ const loadOrdersStat = async () => {
 }
 
 // Загрузка топ товаров
+// const loadTopProducts = async () => {
+//   try {
+//     const response = await api.get('/reports/top-products', {
+//       params: { month: selectedMonth.value }
+//     })
+//     topFlowers.value = response.data.top_flowers || []
+//     topBouquets.value = response.data.top_bouquets || []
+//     drawTopProductsChart()
+//   } catch (error) {
+//     console.error('Ошибка загрузки топ товаров:', error)
+//   }
+// }
+
 const loadTopProducts = async () => {
   try {
     const response = await api.get('/reports/top-products', {
       params: { month: selectedMonth.value }
     })
+    // Используем данные напрямую, без itemable
     topFlowers.value = response.data.top_flowers || []
     topBouquets.value = response.data.top_bouquets || []
     drawTopProductsChart()
@@ -234,11 +280,7 @@ const loadTopProducts = async () => {
 // Загрузка движения цветов
 const loadFlowerMovements = async () => {
   try {
-    const params = {}
-    if (selectedPeriod.value === 'custom' && customStartDate.value && customEndDate.value) {
-      params.start_date = customStartDate.value
-      params.end_date = customEndDate.value
-    }
+    const params = getMovementsParams()
     const response = await api.get('/reports/flower-movements', { params })
     flowerMovements.value = response.data.data || []
     movementsSummary.value = response.data.summary || {}
@@ -251,7 +293,8 @@ const loadFlowerMovements = async () => {
 // Загрузка смен сотрудников
 const loadEmployeeShifts = async () => {
   try {
-    const response = await api.get('/reports/employee-shifts')
+    const params = getMovementsParams()
+    const response = await api.get('/reports/employee-shifts', { params })
     employeeShifts.value = response.data.data || []
   } catch (error) {
     console.error('Ошибка загрузки смен сотрудников:', error)
@@ -261,7 +304,8 @@ const loadEmployeeShifts = async () => {
 // Загрузка продаж по сотрудникам
 const loadEmployeeSales = async () => {
   try {
-    const response = await api.get('/reports/employee-sales')
+    const params = getMovementsParams()
+    const response = await api.get('/reports/employee-sales', { params })
     employeeSales.value = response.data.data || []
     drawEmployeeSalesChart()
   } catch (error) {
@@ -269,19 +313,55 @@ const loadEmployeeSales = async () => {
   }
 }
 
-// Рисование графиков
+// Загрузка данных для графика выручки
+const loadRevenueChart = async () => {
+  try {
+    const params = getMovementsParams() // используем те же параметры дат
+    const response = await api.get('/reports/revenue-chart', { params })
+    revenueChartLabels.value = response.data.labels || []
+    revenueChartData.value = response.data.data || []
+    drawRevenueChart()
+  } catch (error) {
+    console.error('Ошибка загрузки графика выручки:', error)
+  }
+}
+
 const drawRevenueChart = () => {
   if (!revenueChartCanvas.value) return
   const ctx = revenueChartCanvas.value.getContext('2d')
   if (revenueChart) revenueChart.destroy()
 
+  // Если нет данных, показываем пустой график
+  if (!revenueChartLabels.value.length) {
+    revenueChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Нет данных'],
+        datasets: [{
+          label: 'Выручка (руб)',
+          data: [0],
+          borderColor: '#888888',
+          backgroundColor: 'rgba(136, 136, 136, 0.1)',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        }
+      }
+    })
+    return
+  }
+
   revenueChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+      labels: revenueChartLabels.value,
       datasets: [{
         label: 'Выручка (руб)',
-        data: [12000, 15000, 18000, 14000, 22000, 25000, 28000],
+        data: revenueChartData.value,
         borderColor: '#888888',
         backgroundColor: 'rgba(136, 136, 136, 0.1)',
         tension: 0.4,
@@ -293,6 +373,13 @@ const drawRevenueChart = () => {
       maintainAspectRatio: false,
       plugins: {
         legend: { position: 'top' }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: (value) => value.toLocaleString('ru-RU') + ' руб'
+          }
+        }
       }
     }
   })
@@ -303,16 +390,34 @@ const drawTopProductsChart = () => {
   const ctx = topProductsChartCanvas.value.getContext('2d')
   if (topProductsChart) topProductsChart.destroy()
 
-  const labels = [...topFlowers.value.map(f => f.itemable?.name || 'Цветок'), ...topBouquets.value.map(b => b.itemable?.name || 'Букет')]
-  const data = [...topFlowers.value.map(f => f.total_quantity), ...topBouquets.value.map(b => b.total_quantity)]
+  // Собираем все товары (цветы и букеты)
+  const flowers = topFlowers.value.map(f => ({
+    name: f.name || 'Цветок',
+    quantity: f.total_quantity || 0
+  }))
+
+  const bouquets = topBouquets.value.map(b => ({
+    name: b.name || 'Букет',
+    quantity: b.total_quantity || 0
+  }))
+
+  // Объединяем и сортируем по количеству
+  const allItems = [...flowers, ...bouquets]
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 8)
+
+  const labels = allItems.map(item => item.name)
+  const data = allItems.map(item => item.quantity)
+
+  console.log('Топ товаров для графика:', { labels, data })
 
   topProductsChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: labels.slice(0, 8),
+      labels: labels,
       datasets: [{
         label: 'Количество продаж',
-        data: data.slice(0, 8),
+        data: data,
         backgroundColor: '#aaaaaa',
         borderRadius: 8
       }]
@@ -326,6 +431,8 @@ const drawTopProductsChart = () => {
     }
   })
 }
+
+
 
 const drawOrdersStatusChart = () => {
   if (!ordersStatusChartCanvas.value) return
@@ -430,7 +537,8 @@ const loadAllData = async () => {
       loadTopProducts(),
       loadFlowerMovements(),
       loadEmployeeShifts(),
-      loadEmployeeSales()
+      loadEmployeeSales(),
+      loadRevenueChart()
     ])
     drawOrdersStatusChart()
     drawRevenueChart()
@@ -448,9 +556,8 @@ const changePeriod = (period) => {
   loadAllData()
 }
 
-watch([selectedMonth, customStartDate, customEndDate], () => {
-  loadTopProducts()
-  loadFlowerMovements()
+watch(selectedMonth, () => {
+  loadAllData()
 })
 
 watch(() => dataStore.flowers, () => {
@@ -463,6 +570,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Ваши стили остаются без изменений */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -522,31 +630,34 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.modal-footer {
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
   display: flex;
-  justify-content: flex-end;
-  padding: 16px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #f0f0f0;
-  border-radius: 0 0 16px 16px;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  border-radius: 16px;
 }
 
-.close-modal-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-  color: #000000;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e0e0e0;
+  border-top: 3px solid #aaaaaa;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.close-modal-btn:hover {
-  background: #cccccc;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Остальные стили из ReportsBlock */
 .reports-container {
   padding: 10px;
 }
@@ -700,34 +811,6 @@ onMounted(() => {
   background: #e0e0e0;
   font-weight: 600;
   color: #000000;
-}
-
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-  border-radius: 16px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e0e0e0;
-  border-top: 3px solid #aaaaaa;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 900px) {

@@ -8,11 +8,10 @@
 
       <div class="form-group">
         <label>Товар:</label>
-        <select v-model="localData.product_id" class="form-input">
+        <select v-model="selectedUniqueId" class="form-input" @change="onProductChange">
           <option :value="null">Выберите товар</option>
-          <option v-for="product in allProducts" :key="product.id" :value="product.id">
+          <option v-for="product in allProducts" :key="product.uniqueId" :value="product.uniqueId">
             {{ product.name }}
-            <span v-if="product.type === 'flower' && product.supplier_name">(поставщик: {{ product.supplier_name }})</span>
             (остаток: {{ product.quantity || 0 }} шт)
           </option>
         </select>
@@ -20,17 +19,17 @@
 
       <div class="form-group">
         <label>Количество (шт):</label>
-        <input v-model.number="localData.quantity" type="number" class="form-input">
+        <input v-model.number="quantity" type="number" class="form-input">
       </div>
 
       <div class="form-group">
         <label>Дата поступления:</label>
-        <input v-model="localData.received_date" type="date" class="form-input">
+        <input v-model="received_date" type="date" class="form-input">
       </div>
 
       <div class="form-group">
         <label>Причина прихода:</label>
-        <select v-model="localData.reason" class="form-input">
+        <select v-model="reason" class="form-input">
           <option value="Поставка">Поставка от поставщика</option>
           <option value="Возврат">Собран (возврат из сборки)</option>
         </select>
@@ -38,7 +37,7 @@
 
       <div class="form-group">
         <label>Комментарий:</label>
-        <textarea v-model="localData.comment" class="form-input" rows="2"></textarea>
+        <textarea v-model="comment" class="form-input" rows="2"></textarea>
       </div>
 
       <div class="info-box" v-if="selectedProduct">
@@ -54,56 +53,78 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  initialData: {
-    type: Object,
-    default: () => ({
-      product_id: null,
-      quantity: 0,
-      received_date: new Date().toISOString().split('T')[0],
-      reason: 'Поставка',
-      comment: ''
-    })
-  },
-  allProducts: {
-    type: Array,
-    default: () => []
-  }
+  initialData: Object,
+  allProducts: Array
 })
 
 const emit = defineEmits(['close', 'confirm'])
 
-const localData = reactive({ ...props.initialData })
+const selectedUniqueId = ref(null)
+const quantity = ref(1)
+const received_date = ref(new Date().toISOString().split('T')[0])
+const reason = ref('Поставка')
+const comment = ref('')
 
 watch(() => props.initialData, (newVal) => {
-  localData.product_id = newVal.product_id
-  localData.quantity = newVal.quantity
-  localData.received_date = newVal.received_date
-  localData.reason = newVal.reason
-  localData.comment = newVal.comment
-}, { deep: true })
+  if (newVal && newVal.product_id && newVal.product_type) {
+    selectedUniqueId.value = `${newVal.product_type}_${newVal.product_id}`
+  } else {
+    selectedUniqueId.value = null
+  }
+  quantity.value = newVal?.quantity || 1
+  received_date.value = newVal?.received_date || new Date().toISOString().split('T')[0]
+  reason.value = newVal?.reason || 'Поставка'
+  comment.value = newVal?.comment || ''
+}, { immediate: true, deep: true })
 
 const selectedProduct = computed(() => {
-  return props.allProducts.find(p => p.id === localData.product_id)
+  if (!selectedUniqueId.value) return null
+  return props.allProducts?.find(p => p.uniqueId === selectedUniqueId.value)
 })
 
 const newQuantity = computed(() => {
   if (!selectedProduct.value) return 0
-  return (selectedProduct.value.quantity || 0) + (localData.quantity || 0)
+  return (selectedProduct.value.quantity || 0) + (quantity.value || 0)
 })
 
+const onProductChange = () => {
+  console.log('Выбран товар:', selectedUniqueId.value)
+  console.log('selectedProduct:', selectedProduct.value)
+}
+
 const handleConfirm = () => {
-  if (!localData.product_id) {
+  if (!selectedUniqueId.value) {
     alert('Выберите товар')
     return
   }
-  if (!localData.quantity || localData.quantity <= 0) {
+  if (!quantity.value || quantity.value <= 0) {
     alert('Укажите количество')
     return
   }
-  emit('confirm', { ...localData })
+
+  const product = selectedProduct.value
+  if (!product) {
+    alert('Товар не найден')
+    return
+  }
+
+  console.log('Подтверждение:', {
+    product_id: product.id,
+    product_type: product.type,
+    quantity: quantity.value
+  })
+
+  emit('confirm', {
+    product_id: product.id,
+    product_type: product.type,
+    quantity: quantity.value,
+    received_date: received_date.value,
+    reason: reason.value,
+    comment: comment.value
+  })
 }
 </script>
 

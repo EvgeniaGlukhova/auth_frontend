@@ -16,6 +16,7 @@
         <input v-model.number="localForm.price" type="number" class="form-input" required>
       </div>
 
+
       <div class="form-group" v-if="type === 'components'">
         <label>Поставщик:</label>
         <select v-model="localForm.supplier_id" class="form-input">
@@ -25,6 +26,8 @@
           </option>
         </select>
       </div>
+
+
 
       <div class="modal-buttons">
         <button @click="$emit('close')" class="cancel-btn">Отмена</button>

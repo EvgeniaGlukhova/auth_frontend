@@ -80,7 +80,9 @@
           <td><strong>{{ product.name }}</strong></td>
           <td>
               <span :class="['type-badge', activeTypeTab]">
-                {{ activeTypeTab === 'components' ? 'Цветок' : 'Букет' }}
+                <template v-if="activeTypeTab === 'components'">Цветок</template>
+                <template v-else-if="activeTypeTab === 'bouquets'">Букет</template>
+                <template v-else-if="activeTypeTab === 'materials'">Материал</template>
               </span>
           </td>
           <td>{{ product.price }} руб.</td>
@@ -129,6 +131,7 @@
       v-if="showCreateBouquetModal"
       :initial-data="bouquetData"
       :flowers="dataStore.flowers"
+      :users="dataStore.users"
       @close="closeCreateBouquetModal"
       @confirm="confirmCreateBouquet"
     />
@@ -211,37 +214,53 @@ const bouquetData = ref({
   price: 0,
   composition: [{ flower_id: null, quantity: 0 }],
   quantity: 1,
-  description: ''
+  description: '',
+  user_id: null
 })
 
 // Вкладки
 const typeTabs = [
-  { id: 'components', name: 'Компоненты (цветы)' },
-  { id: 'bouquets', name: 'Готовые букеты' }
+  { id: 'components', name: 'Цветы' },
+  { id: 'bouquets', name: 'Готовые букеты' },
+  { id: 'materials', name: 'Материалы' }
 ]
 
 // Все товары для выпадающих списков
 const allProducts = computed(() => {
   const flowers = (dataStore.flowers || []).map(f => ({
     ...f,
+    uniqueId: `flower_${f.id}`,
     type: 'flower',
     supplier_name: f.supplier?.company_name || 'не указан'
   }))
+
   const bouquets = (dataStore.bouquets || []).map(b => ({
     ...b,
+    uniqueId: `bouquet_${b.id}`,
     type: 'bouquet',
     supplier_name: null
   }))
-  return [...flowers, ...bouquets]
+
+  const materials = (dataStore.materials || []).map(m => ({
+    ...m,
+    uniqueId: `material_${m.id}`,
+    type: 'material',
+    supplier_name: m.supplier?.company_name || 'не указан'
+  }))
+
+  return [...flowers, ...bouquets, ...materials]
 })
 
 // Текущие товары в зависимости от вкладки
 const currentProducts = computed(() => {
   if (activeTypeTab.value === 'components') {
     return dataStore.flowers || []
-  } else {
+  } else if (activeTypeTab.value === 'bouquets') {
     return dataStore.bouquets || []
+  } else if (activeTypeTab.value === 'materials') {
+    return dataStore.materials || []
   }
+  return []
 })
 
 
@@ -251,7 +270,9 @@ const loadData = async () => {
   await Promise.all([
     dataStore.get_flowers(searchQuery.value),
     dataStore.get_bouquets(searchQuery.value),
-    dataStore.get_suppliers()
+    dataStore.get_suppliers(),
+    dataStore.get_materials(searchQuery.value),
+    dataStore.get_users()
   ])
 }
 
@@ -347,12 +368,16 @@ const saveProduct = async (data) => {
     price: data.price
   }
 
-  // Добавляем quantity ТОЛЬКО при создании нового товара
+  // Для материалов нужно передавать type
+  if (activeTypeTab.value === 'materials') {
+    sendData.quantity = data.quantity || 0
+  }
+
   if (!isEditing.value && activeTypeTab.value === 'components') {
     sendData.quantity = data.quantity || 0
   }
 
-  if (activeTypeTab.value === 'components' && data.supplier_id) {
+  if ((activeTypeTab.value === 'components' || activeTypeTab.value === 'materials') && data.supplier_id) {
     sendData.supplier_id = data.supplier_id
   }
 
@@ -360,14 +385,18 @@ const saveProduct = async (data) => {
     if (isEditing.value) {
       if (activeTypeTab.value === 'components') {
         await dataStore.update_flower(data.id, sendData)
-      } else {
+      } else if (activeTypeTab.value === 'bouquets') {
         await dataStore.update_bouquet(data.id, sendData)
+      } else if (activeTypeTab.value === 'materials') {
+        await dataStore.update_material(data.id, sendData)
       }
     } else {
       if (activeTypeTab.value === 'components') {
         await dataStore.create_flower(sendData)
-      } else {
+      } else if (activeTypeTab.value === 'bouquets') {
         await dataStore.create_bouquet(sendData)
+      } else if (activeTypeTab.value === 'materials') {
+        await dataStore.create_material(sendData)
       }
     }
 
@@ -380,6 +409,7 @@ const saveProduct = async (data) => {
   }
 }
 
+
 // Подтвердить приход
 // Подтвердить приход
 const confirmComing = async (data) => {
@@ -388,7 +418,8 @@ const confirmComing = async (data) => {
     return
   }
 
-  const product = allProducts.value.find(p => p.id === data.product_id)
+  // Ищем товар по id И по типу
+  const product = allProducts.value.find(p => p.id === data.product_id && p.type === data.product_type)
   if (!product) {
     alert('Товар не найден')
     return
@@ -396,13 +427,16 @@ const confirmComing = async (data) => {
 
   try {
     if (product.type === 'flower') {
-      // Используем специальный метод для поставки цветов
       await dataStore.incoming_flower(product.id, {
         quantity: data.quantity,
         reason: data.reason || 'Поставка от поставщика'
       })
+    } else if (product.type === 'material') {
+      await dataStore.incoming_material(product.id, {
+        quantity: data.quantity,
+        reason: data.reason || 'Поставка материала'
+      })
     } else {
-      // Для букетов пока оставляем старый метод
       const newQty = (product.quantity || 0) + data.quantity
       await dataStore.update_bouquet(product.id, {
         quantity: newQty,
@@ -426,31 +460,45 @@ const confirmExpense = async (data) => {
     return
   }
 
-  const product = allProducts.value.find(p => p.id === data.product_id)
-  if (product) {
-    const newQty = (product.quantity || 0) - data.quantity
-    if (newQty < 0) {
-      alert('Недостаточно товара на складе!')
-      return
-    }
-    const updateData = { quantity: newQty }
-
-    if (product.type === 'flower') {
-      await dataStore.update_flower(product.id, updateData)
-    } else {
-      await dataStore.update_bouquet(product.id, updateData)
-    }
+  const product = allProducts.value.find(p => p.id === data.product_id && p.type === data.product_type)
+  if (!product) {
+    alert('Товар не найден')
+    return
   }
 
-  showExpenseModal.value = false
-  await loadData()
-  alert('Расход оформлен успешно!')
+  try {
+    if (product.type === 'flower') {
+      await dataStore.outgoing_flower(product.id, {
+        quantity: data.quantity,
+        reason: data.reason || 'Расход'
+      })
+    } else if (product.type === 'material') {
+      await dataStore.outgoing_material(product.id, {
+        quantity: data.quantity,
+        reason: data.reason || 'Расход материала'
+      })
+    } else {
+      const newQty = (product.quantity || 0) - data.quantity
+      await dataStore.update_bouquet(product.id, { quantity: newQty })
+    }
+
+    showExpenseModal.value = false
+    await loadData()
+    alert('Расход оформлен успешно!')
+  } catch (error) {
+    console.error('Ошибка расхода:', error)
+    alert(error.response?.data?.message || 'Ошибка при списании')
+  }
 }
 
 // Подтвердить сборку букета
 const confirmCreateBouquet = async (data) => {
   if (!data.name || !data.price) {
     alert('Заполните название и цену букета')
+    return
+  }
+  if (!data.user_id) {
+    alert('Выберите сотрудника, который собирает букет')
     return
   }
 
@@ -470,25 +518,42 @@ const confirmCreateBouquet = async (data) => {
     }
   }
 
-  // Списываем цветы со склада
-  for (const item of data.composition) {
-    const flower = dataStore.flowers.find(f => f.id === item.flower_id)
-    const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
-    await dataStore.update_flower(flower.id, { quantity: newQty })
+  try {
+    // 1. Создаем букет
+    const bouquetResult = await dataStore.create_bouquet({
+      name: data.name,
+      price: data.price,
+      quantity: data.quantity,
+      description: data.description,
+      production_date: new Date().toISOString().split('T')[0]
+    })
+
+    const bouquetId = bouquetResult.data?.id || bouquetResult.id
+
+    // 2. Добавляем цветы в букет (bouquet_items)
+    for (const item of data.composition) {
+      await dataStore.create_bouquet_item({
+        bouquet_id: bouquetId,
+        flower_id: item.flower_id,
+        quantity: item.quantity * data.quantity,
+        user_id: data.user_id  // ← передаем ID сотрудника
+      })
+    }
+
+    // 3. Списываем цветы со склада
+    for (const item of data.composition) {
+      const flower = dataStore.flowers.find(f => f.id === item.flower_id)
+      const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
+      await dataStore.update_flower(flower.id, { quantity: newQty })
+    }
+
+    closeCreateBouquetModal()
+    await loadData()
+    alert('Букет успешно собран!')
+  } catch (error) {
+    console.error('Ошибка сборки букета:', error)
+    alert('Ошибка при сборке букета')
   }
-
-  // Создаем букет
-  await dataStore.create_bouquet({
-    name: data.name,
-    price: data.price,
-    quantity: data.quantity,
-    description: data.description,
-    production_date: new Date().toISOString().split('T')[0]
-  })
-
-  closeCreateBouquetModal()
-  await loadData()
-  alert('Букет успешно собран!')
 }
 
 // Удалить товар
@@ -497,8 +562,10 @@ const deleteProduct = async (product) => {
     try {
       if (activeTypeTab.value === 'components') {
         await dataStore.delete_flower(product.id)
-      } else {
+      } else if (activeTypeTab.value === 'bouquets') {
         await dataStore.delete_bouquet(product.id)
+      } else if (activeTypeTab.value === 'materials') {
+        await dataStore.delete_material(product.id)
       }
       await loadData()
     } catch (error) {

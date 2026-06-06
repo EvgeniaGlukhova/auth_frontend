@@ -8,6 +8,38 @@
 
       <div class="modal-body">
         <div class="form-group">
+          <label>Тип доставки:</label>
+          <select v-model="localOrder.delivery_type" class="form-input">
+            <option value="pickup">Самовывоз</option>
+            <option value="delivery">Доставка</option>
+          </select>
+        </div>
+
+        <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
+          <label>Адрес доставки:</label>
+          <textarea v-model="localOrder.delivery_address" class="form-input" rows="2" placeholder="г. Москва, ул. Цветочная, д. 1"></textarea>
+        </div>
+
+        <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
+          <label>Курьер:</label>
+          <select v-model="localOrder.courier_id" class="form-input">
+            <option :value="null">Выберите курьера</option>
+            <option v-for="user in couriers" :key="user.id" :value="user.id">
+              {{ getUserFullName(user) }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Сотрудник:</label>
+          <select v-model="localOrder.user_id" class="form-input">
+            <option :value="null">Выберите сотрудника</option>
+            <option v-for="user in users" :key="user.id" :value="user.id">
+              {{ getUserFullName(user) }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Клиент из CRM:</label>
           <select v-model="localOrder.client_id" class="form-input">
             <option :value="null">Выберите клиента</option>
@@ -90,17 +122,28 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   show: Boolean,
   clients: Array,
   flowers: Array,
   bouquets: Array,
-  selectedDate: String
+  type: Array,
+  selectedDate: String,
+  users: Array
 })
 
+
+
 const emit = defineEmits(['close', 'save'])
+
+const couriers = computed(() => {
+  if (!props.users) return []
+  return props.users.filter(user => {
+    return user.role_id === 5 || user.role?.name === 'courier' || user.role === 'courier'
+  })
+})
 
 const localOrder = ref({
   client_id: null,
@@ -108,8 +151,13 @@ const localOrder = ref({
   client_phone: '',
   delivery_date: '',
   delivery_time: '',
+  user_id: null,
   payment_method: null,
   comment: '',
+  delivery_type: 'pickup',
+  delivery_address: '',
+  courier_id: null,
+  assembly_date: '',
   items: [{ type: 'flower', id: null, quantity: 1 }]
 })
 
@@ -133,6 +181,11 @@ watch(() => props.show, (newVal) => {
       delivery_time: '',
       payment_method: null,
       comment: '',
+      delivery_type: 'pickup',
+      delivery_address: '',
+      courier_id: null,
+      assembly_date: '',
+      user_id: null,
       items: [{ type: 'flower', id: null, quantity: 1 }]
     }
   }
@@ -148,6 +201,7 @@ const removeItem = (index) => {
 
 const save = () => {
   // Валидация: должно быть указано либо client_id, либо client_name
+
   if (!localOrder.value.client_id && !localOrder.value.client_name) {
     alert('Укажите клиента (выберите из списка или введите имя)')
     return
@@ -169,6 +223,7 @@ const save = () => {
       alert(`Укажите количество товара в позиции ${i + 1}`)
       return
     }
+
   }
 
   // Подготавливаем данные в правильном формате
@@ -203,8 +258,38 @@ const save = () => {
   if (localOrder.value.comment) {
     orderData.comment = localOrder.value.comment
   }
-
+  if (localOrder.value.delivery_type) {
+    orderData.delivery_type = localOrder.value.delivery_type
+  }
+  if (localOrder.value.delivery_address) {
+    orderData.delivery_address = localOrder.value.delivery_address
+  }
+  if (localOrder.value.courier_id) {
+    orderData.courier_id = parseInt(localOrder.value.courier_id)
+  }
+  if (localOrder.value.assembly_date) {
+    orderData.assembly_date = localOrder.value.assembly_date
+  }
+  console.log('=== ОТЛАДКА delivery_type ===')
+  console.log('localOrder.value.delivery_type:', localOrder.value.delivery_type)
+  console.log('Тип значения:', typeof localOrder.value.delivery_type)
   emit('save', orderData)
+}
+
+const getUserFullName = (user) => {
+  if (user.full_name) {
+    const fullName = user.full_name.trim()
+    if (fullName && user.role) {
+      return `${fullName} (${user.role.name})`
+    }
+    return fullName
+  }
+  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+  const roleName = user.role?.name || ''
+  if (name && roleName) {
+    return `${name} (${roleName})`
+  }
+  return name || user.email?.split('@')[0] || 'Сотрудник'
 }
 
 const close = () => {

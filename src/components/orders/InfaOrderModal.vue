@@ -12,6 +12,22 @@
           <div class="section-title">ИНФОРМАЦИЯ О ЗАКАЗЕ</div>
           <div class="info-grid">
             <div class="info-row">
+              <span class="info-label">Сотрудник:</span>
+              <span class="info-value">{{ getEmployeeName() }}</span>
+            </div>
+            <div class="info-row" v-if="order?.delivery_type">
+              <span class="info-label">Тип доставки:</span>
+              <span class="info-value">{{ getDeliveryTypeText(order?.delivery_type) }}</span>
+            </div>
+            <div class="info-row" v-if="order?.delivery_address">
+              <span class="info-label">Адрес доставки:</span>
+              <span class="info-value">{{ order?.delivery_address }}</span>
+            </div>
+            <div class="info-row" v-if="order?.courier">
+              <span class="info-label">Курьер:</span>
+              <span class="info-value">{{ getCourierName() }}</span>
+            </div>
+            <div class="info-row">
               <span class="info-label">Номер заказа:</span>
               <span class="info-value">{{ order?.id }}</span>
             </div>
@@ -28,6 +44,10 @@
               <span class="info-value status-badge" :class="order?.status">
                 {{ getStatusText(order?.status) }}
               </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Сотрудник:</span>
+              <span class="info-value">{{ getEmployeeName() }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Тип заказа:</span>
@@ -103,6 +123,7 @@
           v-if="canChangeStatus"
           @click="changeStatus"
           class="action-status-btn"
+          :class="getStatusActionClass()"
         >
           {{ getStatusActionText() }}
         </button>
@@ -120,7 +141,7 @@ const props = defineProps({
   order: Object
 })
 
-const emit = defineEmits(['close', 'status-change'])
+const emit = defineEmits(['close', 'status-change', 'complete-order'])
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0'
@@ -216,6 +237,18 @@ const getStatusActionText = () => {
   return actions[status] || 'Изменить статус'
 }
 
+// Получить класс кнопки действия
+const getStatusActionClass = () => {
+  if (!props.order) return ''
+  const status = props.order.status
+  const classes = {
+    new: 'work-btn',
+    assembly: 'assemble-btn',
+    ready: 'complete-btn'
+  }
+  return classes[status] || 'default-btn'
+}
+
 const changeStatus = () => {
   if (!props.order) return
 
@@ -228,13 +261,53 @@ const changeStatus = () => {
       newStatus = 'ready'
       break
     case 'ready':
-      newStatus = 'completed'
-      break
+      // ✅ Вместо простого изменения статуса - вызываем завершение со списанием
+      emit('complete-order', props.order.id)
+      return
     default:
       return
   }
 
   emit('status-change', props.order.id, newStatus)
+}
+
+// Получить имя сотрудника, который создал заказ
+const getEmployeeName = () => {
+  if (!props.order) return 'Не указан'
+
+  // Если есть данные о сотруднике в заказе
+  if (props.order.user) {
+    const user = props.order.user
+    const fullName = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+    if (fullName) {
+      return fullName
+    }
+    return user.email?.split('@')[0] || 'Сотрудник'
+  }
+
+  // Если есть только user_id, но данные не подгрузились
+  if (props.order.user_id) {
+    return `ID: ${props.order.user_id}`
+  }
+
+  return 'Не указан'
+}
+
+// Получить текст типа доставки
+const getDeliveryTypeText = (type) => {
+  const types = {
+    'pickup': 'Самовывоз',
+    'delivery': 'Доставка'
+  }
+  return types[type] || type || 'Не указан'
+}
+
+// Получить имя курьера
+const getCourierName = () => {
+  if (!props.order?.courier) return 'Не назначен'
+  const courier = props.order.courier
+  const fullName = `${courier.surname || ''} ${courier.name || ''} ${courier.patronymic || ''}`.trim()
+  return fullName || courier.email?.split('@')[0] || 'Курьер'
 }
 
 const close = () => {
@@ -433,4 +506,7 @@ const close = () => {
 .close-modal-btn:hover {
   background-color: #cccccc;
 }
+
+
+
 </style>
