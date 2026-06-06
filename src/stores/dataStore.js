@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import api from '../services/api';
 
-const backendUrl = 'http://localhost:8000/api';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000/api';
 
 export const useDataStore = defineStore('data', {
   state: () => ({
@@ -852,7 +852,7 @@ export const useDataStore = defineStore('data', {
       this.loading = true;
       this.errorMessage = "";
       try {
-        let url = backendUrl + '/order-items';
+        let url = '/order-items';
         if (orderId) {
           url += `?order_id=${orderId}`;
         }
