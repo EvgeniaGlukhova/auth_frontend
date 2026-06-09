@@ -2,9 +2,14 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000/api',
+  withCredentials: true,        // Отправлять cookies
+  withXSRFToken: true,          // Автоматически добавлять X-XSRF-TOKEN (для новых версий Axios)
+  xsrfCookieName: 'XSRF-TOKEN', // Имя cookie с CSRF-токеном (Laravel)
+  xsrfHeaderName: 'X-XSRF-TOKEN', // Имя заголовка для CSRF
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest' // Важный заголовок для Laravel
   }
 })
 
