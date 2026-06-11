@@ -25,8 +25,8 @@
     <!-- Кнопки действий -->
     <div class="action-buttons">
       <button @click="openAddModal" class="btn-action">Добавить клиента</button>
-      <button @click="openCallModal" class="btn-action">Позвонить</button>
-      <button @click="openSmsModal" class="btn-action">SMS</button>
+<!--      <button @click="openCallModal" class="btn-action">Позвонить</button>-->
+<!--      <button @click="openSmsModal" class="btn-action">SMS</button>-->
     </div>
 
     <div class="filters-bar">
@@ -136,39 +136,39 @@
       </div>
     </div>
 
-    <!-- Модальное окно звонка (заглушка) -->
-    <div v-if="showCallModal" class="modal-overlay" @click="showCallModal = false">
-      <div class="modal-content small-modal" @click.stop>
-        <div class="modal-header">
-          <h3>Позвонить клиенту</h3>
-          <button class="close-btn" @click="showCallModal = false">✕</button>
-        </div>
-        <div class="call-content">
-          <p>Функция звонка в разработке</p>
-          <p class="call-note">Вы сможете звонить клиентам через IP-телефонию</p>
-        </div>
-        <div class="modal-buttons">
-          <button @click="showCallModal = false" class="confirm-btn">Закрыть</button>
-        </div>
-      </div>
-    </div>
+<!--    &lt;!&ndash; Модальное окно звонка (заглушка) &ndash;&gt;-->
+<!--    <div v-if="showCallModal" class="modal-overlay" @click="showCallModal = false">-->
+<!--      <div class="modal-content small-modal" @click.stop>-->
+<!--        <div class="modal-header">-->
+<!--          <h3>Позвонить клиенту</h3>-->
+<!--          <button class="close-btn" @click="showCallModal = false">✕</button>-->
+<!--        </div>-->
+<!--        <div class="call-content">-->
+<!--          <p>Функция звонка в разработке</p>-->
+<!--          <p class="call-note">Вы сможете звонить клиентам через IP-телефонию</p>-->
+<!--        </div>-->
+<!--        <div class="modal-buttons">-->
+<!--          <button @click="showCallModal = false" class="confirm-btn">Закрыть</button>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
 
-    <!-- Модальное окно SMS (заглушка) -->
-    <div v-if="showSmsModal" class="modal-overlay" @click="showSmsModal = false">
-      <div class="modal-content small-modal" @click.stop>
-        <div class="modal-header">
-          <h3>Отправить SMS</h3>
-          <button class="close-btn" @click="showSmsModal = false">✕</button>
-        </div>
-        <div class="sms-content">
-          <p>Функция SMS-рассылки в разработке</p>
-          <p class="sms-note">Вы сможете отправлять SMS клиентам</p>
-        </div>
-        <div class="modal-buttons">
-          <button @click="showSmsModal = false" class="confirm-btn">Закрыть</button>
-        </div>
-      </div>
-    </div>
+<!--    &lt;!&ndash; Модальное окно SMS (заглушка) &ndash;&gt;-->
+<!--    <div v-if="showSmsModal" class="modal-overlay" @click="showSmsModal = false">-->
+<!--      <div class="modal-content small-modal" @click.stop>-->
+<!--        <div class="modal-header">-->
+<!--          <h3>Отправить SMS</h3>-->
+<!--          <button class="close-btn" @click="showSmsModal = false">✕</button>-->
+<!--        </div>-->
+<!--        <div class="sms-content">-->
+<!--          <p>Функция SMS-рассылки в разработке</p>-->
+<!--          <p class="sms-note">Вы сможете отправлять SMS клиентам</p>-->
+<!--        </div>-->
+<!--        <div class="modal-buttons">-->
+<!--          <button @click="showSmsModal = false" class="confirm-btn">Закрыть</button>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
 
     <!-- Сообщение об ошибке -->
     <div v-if="dataStore.errorMessage" class="error-message">
@@ -269,15 +269,15 @@ const openAddModal = () => {
   showClientModal.value = true
 }
 
-// Открыть модалку звонка
-const openCallModal = () => {
-  showCallModal.value = true
-}
-
-// Открыть модалку SMS
-const openSmsModal = () => {
-  showSmsModal.value = true
-}
+// // Открыть модалку звонка
+// const openCallModal = () => {
+//   showCallModal.value = true
+// }
+//
+// // Открыть модалку SMS
+// const openSmsModal = () => {
+//   showSmsModal.value = true
+// }
 
 // Редактировать клиента
 const editClient = (client) => {
