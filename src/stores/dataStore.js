@@ -459,7 +459,7 @@ export const useDataStore = defineStore('data', {
 
     // ==================== ЭЛЕМЕНТЫ БУКЕТОВ ====================
 
-    // ==================== ЭЛЕМЕНТЫ БУКЕТОВ (BOUQUET ITEMS) ====================
+    /// ==================== ЭЛЕМЕНТЫ БУКЕТОВ (BOUQUET ITEMS) ====================
 
     async get_bouquet_items(bouquetId = null) {
       this.loading = true;
@@ -488,20 +488,26 @@ export const useDataStore = defineStore('data', {
       }
     },
 
-    async create_bouquet_item(data) {
+    async create_bouquet_item(itemData) {
       this.errorMessage = "";
       this.loading = true;
       try {
-        const response = await api.post('/bouquet-item', data);
+        console.log('=== create_bouquet_item ===')
+        console.log('Отправляемые данные:', itemData)
+
+        const response = await api.post('/bouquet-item', itemData);
+
+        console.log('Ответ сервера:', response.data)
 
         if (response.data.success) {
-          await this.get_bouquet_items(data.bouquet_id);
+          await this.get_bouquet_items(itemData.bouquet_id);
           return response.data;
         }
         return response.data;
       } catch (error) {
-        console.error('Ошибка добавления цветка в букет:', error);
-        this.errorMessage = error.response?.data?.message || "Ошибка добавления цветка";
+        console.error('Ошибка добавления компонента в букет:', error);
+        console.error('Детали ошибки:', error.response?.data)
+        this.errorMessage = error.response?.data?.message || "Ошибка добавления компонента";
         throw error;
       } finally {
         this.loading = false;
@@ -540,7 +546,7 @@ export const useDataStore = defineStore('data', {
         }
         return response.data;
       } catch (error) {
-        console.error('Ошибка удаления цветка из букета:', error);
+        console.error('Ошибка удаления компонента из букета:', error);
         this.errorMessage = error.response?.data?.message || "Ошибка удаления";
         throw error;
       } finally {
@@ -553,31 +559,36 @@ export const useDataStore = defineStore('data', {
     async get_clients(search = '') {
       this.loading = true;
       this.errorMessage = "";
+
+      console.log('=== get_clients ===')
+      console.log('search параметр:', search)
+
+      const url = `/client?search=${encodeURIComponent(search)}`
+      console.log('URL запроса:', url)
       try {
-        const response = await api.get( '/client', {
+        const response = await api.get('/client', {
           params: { search: search }
         });
 
+        console.log('get_clients response:', response.data)
+
+        // Важно! Правильно загружаем данные
         if (response.data.success) {
-          this.clients = response.data.data;
-          this.clients_total = this.clients.length;
+          this.clients = response.data.data
+        } else if (Array.isArray(response.data)) {
+          this.clients = response.data
         } else {
-          this.clients = Array.isArray(response.data) ? response.data : [];
-          this.clients_total = this.clients.length;
+          this.clients = response.data.data || []
         }
+
+        this.clients_total = this.clients.length
+        console.log('Загружено клиентов:', this.clients.length)
+
       } catch (error) {
-        console.error('Ошибка загрузки клиентов:', error);
-        if (error.response) {
-          this.errorMessage = error.response.data.message || "Ошибка загрузки клиентов";
-        } else if (error.request) {
-          this.errorMessage = "Нет ответа от сервера";
-        } else {
-          this.errorMessage = error.message;
-        }
-        this.clients = [];
-        this.clients_total = 0;
+        console.error('Ошибка:', error)
+        this.clients = []
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
 

@@ -3,7 +3,7 @@
     <div class="modal-content employees-modal" @click.stop>
       <div class="modal-header">
         <h3>Управление сотрудниками</h3>
-        <button class="close-btn" @click="$emit('close')">X</button>
+        <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
 
       <div class="modal-body">
@@ -67,9 +67,10 @@
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button @click="$emit('close')" class="cancel-btn">Закрыть</button>
+      <div class="modal-buttons">
+        <button @click="exportEmployeesToExcel" class="export-btn">Экспорт в Excel</button>
       </div>
+
     </div>
 
     <!-- Модальное окно добавления/редактирования сотрудника -->
@@ -77,7 +78,7 @@
       <div class="modal-sub-content" @click.stop>
         <div class="modal-header">
           <h3>{{ isEditing ? 'Редактирование сотрудника' : 'Добавление сотрудника' }}</h3>
-          <button class="close-btn" @click="closeAddEditModal">X</button>
+          <button class="close-btn" @click="closeAddEditModal">✕</button>
         </div>
 
         <div class="modal-body">
@@ -133,6 +134,8 @@
           <button @click="saveEmployee" class="save-btn">Сохранить</button>
         </div>
       </div>
+
+
     </div>
   </div>
 </template>
@@ -342,32 +345,18 @@ const deleteEmployee = async (employee) => {
 onMounted(() => {
   loadEmployees()
 })
+
+import { exportEmployees } from '../../utils/excelExport'
+
+const exportEmployeesToExcel = () => {
+  exportEmployees(employees.value)
+}
 </script>
 
 <style scoped>
-/* Добавляем стили для сообщения об ошибке доступа */
-.error-message-box {
-  background-color: #ffebee;
-  border: 1px solid #f44336;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 20px;
-  color: #c62828;
-  text-align: center;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
-/* Стили для disabled кнопок */
-.edit-btn:disabled, .delete-btn:disabled, .add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.edit-btn:disabled:hover, .delete-btn:disabled:hover, .add-btn:disabled:hover {
-  background: #e0e0e0;
-  transform: none;
-}
-
-/* Остальные стили остаются без изменений */
+/* Модальное окно */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -375,6 +364,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -386,11 +376,30 @@ onMounted(() => {
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Скроллбар */
+.employees-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.employees-modal::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.employees-modal::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 10px;
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 28px;
   overflow: hidden;
 }
 
@@ -398,113 +407,171 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #f9cffd;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.3px;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #999999;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
+  transform: scale(1.05);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 1.5rem;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 16px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  gap: 0.8rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
 }
 
+/* Кнопка добавления */
 .add-button-container {
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
   text-align: right;
 }
 
 .add-btn {
-  padding: 10px 20px;
-  background: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
   color: #000000;
-  border: none;
-  border-radius: 8px;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
 }
 
 .add-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(217, 235, 97, 0.3);
 }
 
+.add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ошибка доступа */
+.error-message-box {
+  background: #fef2f0;
+  border-left: 3px solid #e85d4a;
+  border-radius: 16px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.5rem;
+  color: #e85d4a;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Таблица */
 .table-container {
   overflow-x: auto;
+  border-radius: 20px;
+  background: #ffffff;
 }
 
 .employees-table {
   width: 100%;
   border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
 }
 
 .employees-table th,
 .employees-table td {
-  padding: 12px 10px;
+  padding: 0.8rem 0.8rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #f0f0f0;
   color: #000000;
+  font-size: 0.85rem;
 }
 
 .employees-table th {
-  background: #f0f0f0;
+  background: #f9f9fb;
   font-weight: 600;
-  color: #000000;
+  color: #4a5b4e;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .employees-table tr:hover {
-  background: #f5f5f5;
+  background: #f9f9fb;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .edit-btn, .delete-btn {
-  padding: 6px 12px;
+  padding: 0.3rem 0.8rem;
   border: none;
   cursor: pointer;
-  background: #e0e0e0;
+  background: #f5f5f7;
   color: #000000;
-  border-radius: 4px;
-  font-size: 12px;
-  transition: all 0.2s;
+  border-radius: 30px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
-.edit-btn:hover, .delete-btn:hover {
-  background: #cccccc;
+.edit-btn:hover {
+  background: #d9eb61;
+  transform: scale(1.02);
+}
+
+.delete-btn:hover {
+  background: #f9cffd;
+  transform: scale(1.02);
+}
+
+.edit-btn:disabled, .delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .text-center {
   text-align: center;
 }
 
-/* Стили для вложенного модального окна */
+/* Вложенное модальное окно (добавление/редактирование) */
 .modal-sub-overlay {
   position: fixed;
   top: 0;
@@ -512,6 +579,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -519,73 +587,147 @@ onMounted(() => {
 }
 
 .modal-sub-content {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 28px;
   max-width: 500px;
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
 }
 
+/* Скроллбар для вложенного окна */
+.modal-sub-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-sub-content::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.modal-sub-content::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 10px;
+}
+
+/* Форма */
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  font-size: 0.8rem;
   color: #000000;
 }
 
 .form-input {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #cccccc;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 0.7rem 1rem;
+  border: 2px solid #f5f5f7;
+  border-radius: 40px;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
   color: #000000;
+  background: #ffffff;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #999999;
+  border-color: #d9eb61;
+  box-shadow: 0 0 0 3px #d9eb6140;
+}
+
+select.form-input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5b4e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
 }
 
 .hint {
   display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #666666;
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  color: #999999;
 }
 
+/* Кнопки формы */
 .save-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #d9eb61;
   color: #000000;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
 }
 
 .save-btn:hover {
-  background: #cccccc;
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 
 .cancel-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #f5f5f7;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  margin-right: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
   color: #000000;
+  transition: all 0.3s ease;
 }
 
 .cancel-btn:hover {
-  background: #cccccc;
+  background: #e8e8ec;
+  transform: translateY(-1px);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
+}
+
+.export-btn {
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
+  color: #2c3e2f;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.2);
+}
+
+.export-btn:hover {
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 </style>

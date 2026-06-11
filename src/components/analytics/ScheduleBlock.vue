@@ -3,7 +3,7 @@
     <div class="modal-content schedule-modal" @click.stop>
       <div class="modal-header">
         <h3>Расписание смен на {{ monthName }} {{ currentYear }}</h3>
-        <button class="close-btn" @click="closeModal">X</button>
+        <button class="close-btn" @click="closeModal">✕</button>
       </div>
 
       <div class="modal-body">
@@ -67,6 +67,10 @@
             </tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="modal-buttons">
+          <button @click="exportScheduleToExcel" class="export-btn">Экспорт в Excel</button>
         </div>
 
         <!-- Легенда (только для админа в режиме редактирования) -->
@@ -404,9 +408,17 @@ const nextMonth = () => {
 onMounted(() => {
   loadData()
 })
+
+import { exportSchedule } from '../../utils/excelExport'
+
+const exportScheduleToExcel = () => {
+  exportSchedule(employees.value, schedules.value, monthName.value)
+}
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -414,6 +426,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -425,11 +438,30 @@ onMounted(() => {
   width: 95%;
   max-height: 85vh;
   overflow-y: auto;
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Скроллбар */
+.schedule-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.schedule-modal::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.schedule-modal::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 10px;
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 28px;
   overflow: hidden;
 }
 
@@ -437,189 +469,225 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #f9cffd;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.3px;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #999999;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
+  transform: scale(1.05);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 1.5rem;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 16px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
 }
 
+/* Навигация по месяцам */
 .month-navigation {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 0 20px;
+  margin-bottom: 1.5rem;
+  padding: 0;
 }
 
 .nav-btn {
-  padding: 8px 16px;
-  background: #e0e0e0;
-  border: none;
-  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  background: #ffffff;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
   color: #000000;
+  transition: all 0.3s ease;
 }
 
 .nav-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(217, 235, 97, 0.3);
 }
 
 .current-month {
-  font-size: 18px;
-  font-weight: bold;
-  color: #000000;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e07bc4;
 }
 
+/* Режим редактирования */
 .edit-mode-control {
   text-align: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  background: #f0f0f0;
-  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  padding: 0.8rem;
+  background: #f9cffd30;
+  border-radius: 20px;
 }
 
 .edit-mode-btn {
-  padding: 10px 20px;
-  background: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
   color: #000000;
-  border: none;
-  border-radius: 8px;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
 }
 
 .edit-mode-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(217, 235, 97, 0.3);
 }
 
 .edit-mode-actions {
   display: flex;
-  gap: 15px;
+  gap: 1rem;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .edit-mode-text {
-  color: #000000;
-  font-weight: bold;
+  color: #8b3a8b;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .save-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.5rem 1.2rem;
+  background: #d9eb61;
   color: #000000;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.8rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
 }
 
 .save-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 
 .cancel-edit-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.5rem 1.2rem;
+  background: #f5f5f7;
   color: #000000;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.8rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
 }
 
 .cancel-edit-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #e8e8ec;
+  transform: translateY(-1px);
 }
 
+/* Режим только для чтения */
 .readonly-notice {
   text-align: center;
-  padding: 10px;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  color: #856404;
-  font-size: 14px;
+  padding: 0.6rem;
+  background: #fef2f0;
+
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  color: #e85d4a;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
+/* Таблица расписания */
 .schedule-table-container {
   overflow-x: auto;
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid #f5f5f7;
 }
 
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.8rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .schedule-table th,
 .schedule-table td {
-  border: 1px solid #e0e0e0;
-  padding: 10px 8px;
+  border: 1px solid #f0f0f0;
+  padding: 0.7rem 0.5rem;
   text-align: center;
   vertical-align: middle;
 }
 
 .employee-col {
-  min-width: 150px;
-  background: #f0f0f0;
+  min-width: 160px;
+  background: #f9f9fb;
 }
 
 .day-col {
-  min-width: 80px;
-  background: #f0f0f0;
+  min-width: 75px;
+  background: #f9f9fb;
 }
 
 .day-number {
-  font-size: 16px;
-  font-weight: bold;
-  color: #000000;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #e07bc4;
 }
 
 .day-week {
-  font-size: 11px;
-  color: #666666;
+  font-size: 0.65rem;
+  color: #999999;
+  margin-top: 0.2rem;
 }
 
 .employee-cell {
@@ -627,24 +695,25 @@ onMounted(() => {
 }
 
 .employee-name {
-  font-weight: 500;
+  font-weight: 600;
   color: #000000;
+  font-size: 0.85rem;
 }
 
 .employee-role {
-  font-size: 11px;
-  color: #666666;
-  margin-top: 4px;
+  font-size: 0.65rem;
+  color: #999999;
+  margin-top: 0.2rem;
 }
 
 .schedule-cell {
-  min-width: 80px;
-  transition: background 0.2s;
+  min-width: 75px;
+  transition: all 0.2s ease;
   cursor: default;
 }
 
 .schedule-cell.weekend {
-  background: #f0f0f0;
+  background: #f9f9fb;
 }
 
 .schedule-cell.editable {
@@ -652,33 +721,35 @@ onMounted(() => {
 }
 
 .schedule-cell.editable:hover {
-  background: #e0e0e0;
+  background: #f9cffd40;
 }
 
 .schedule-cell.changed {
-  background: #f0f0f0;
+  background: #fffded;
   position: relative;
 }
 
 .cell-text {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #000000;
+  font-weight: 500;
 }
 
+/* Легенда */
 .legend {
   display: flex;
-  gap: 20px;
-  padding: 15px 20px;
-  background: #f0f0f0;
-  border-radius: 8px;
+  gap: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: #f9f9fb;
+  border-radius: 20px;
   flex-wrap: wrap;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   color: #000000;
 }
 
@@ -686,90 +757,138 @@ onMounted(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #f0f0f0;
-  border: 1px solid #999999;
+  background: #fffded;
+  border: 1px solid #d9eb61;
 }
 
 .legend-icon {
-  font-size: 12px;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  background: #f9cffd40;
+  border-radius: 20px;
 }
 
+/* Выпадающий список для редактирования */
 .edit-popup {
   position: fixed;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   z-index: 2000;
   min-width: 180px;
   overflow: hidden;
+  border: 1px solid #f5f5f7;
 }
 
 .popup-header {
-  padding: 10px 12px;
-  background: #e0e0e0;
+  padding: 0.6rem 0.8rem;
+  background: #f9cffd;
   color: #000000;
-  font-size: 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
   display: flex;
   justify-content: space-between;
 }
 
 .popup-date {
-  font-size: 11px;
-  opacity: 0.9;
-  color: #666666;
+  font-size: 0.7rem;
+  opacity: 0.8;
+  color: #8b3a8b;
 }
 
 .popup-options {
-  padding: 5px 0;
+  padding: 0.3rem 0;
 }
 
 .popup-option {
-  padding: 10px 12px;
+  padding: 0.6rem 0.8rem;
   cursor: pointer;
-  transition: background 0.2s;
-  font-size: 13px;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
   color: #000000;
 }
 
 .popup-option:hover {
-  background: #f0f0f0;
+  background: #f9cffd40;
 }
 
 .popup-option.active {
-  background: #e0e0e0;
+  background: #d9eb61;
   color: #000000;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .popup-close {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 0.3rem;
+  right: 0.3rem;
   background: none;
   border: none;
-  font-size: 16px;
+  font-size: 0.9rem;
   cursor: pointer;
   color: #999999;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .popup-close:hover {
   color: #000000;
+  background: #ffffff50;
 }
 
+/* Кнопка закрытия */
 .cancel-btn {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #f5f5f7;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
   color: #000000;
+  transition: all 0.3s ease;
 }
 
 .cancel-btn:hover {
-  background: #cccccc;
-  transform: scale(1.02);
+  background: #e8e8ec;
+  transform: translateY(-1px);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
+}
+
+.export-btn {
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
+  color: #2c3e2f;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.2);
+}
+
+.export-btn:hover {
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 </style>

@@ -1,23 +1,22 @@
 <template>
   <div class="warehouse-page">
-    <!-- Верхняя панель -->
+    <!-- Верхняя панель с навигацией -->
     <div class="top-bar">
-      <h1>Цветочный магазин</h1>
+      <h1>Sunshine</h1>
+      <div class="nav-tabs">
+        <router-link to="/dashboard" class="nav-link">Главная</router-link>
+        <router-link to="/warehouse" class="nav-link active">Склад</router-link>
+        <router-link to="/customers" class="nav-link">Клиенты</router-link>
+        <router-link to="/orders" class="nav-link">Заказы</router-link>
+        <router-link to="/analytics" class="nav-link">Аналитика</router-link>
+      </div>
       <div class="search-profile">
         <div class="user-details">
           <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
           <span class="user-role">{{ getRoleName() }}</span>
         </div>
-        <router-link to="/dashboard" class="logout-btn">Выход</router-link>
+<!--        <router-link to="/dashboard" class="logout-btn">Выйти</router-link>-->
       </div>
-    </div>
-
-    <!-- Навигация -->
-    <div class="nav-tabs">
-      <button class="active">Склад</button>
-      <button @click="$router.push('/customers')">Клиенты</button>
-      <button @click="$router.push('/orders')">Заказы</button>
-      <button @click="$router.push('/analytics')">Аналитика</button>
     </div>
 
     <!-- Заголовок раздела -->
@@ -25,10 +24,10 @@
 
     <!-- Кнопки действий -->
     <div class="action-buttons">
-      <button @click="openAddModal" class="btn-primary">Добавить</button>
-      <button @click="openComingModal" class="btn-secondary">Приход</button>
-      <button @click="openExpenseModal" class="btn-secondary">Расход</button>
-      <button @click="openCreateBouquetModal" class="btn-secondary">Собрать букет</button>
+      <button @click="openAddModal" class="btn-action">Добавить</button>
+      <button @click="openComingModal" class="btn-action">Приход</button>
+      <button @click="openExpenseModal" class="btn-action">Расход</button>
+      <button @click="openCreateBouquetModal" class="btn-action">Собрать букет</button>
     </div>
 
     <!-- Вкладки типов товаров -->
@@ -60,7 +59,6 @@
       <table class="products-table">
         <thead>
         <tr>
-          <th>ID</th>
           <th>Название</th>
           <th>Тип</th>
           <th>Цена (руб)</th>
@@ -70,26 +68,25 @@
         </thead>
         <tbody>
         <tr v-if="dataStore.loading">
-          <td colspan="6" class="text-center">Загрузка...</td>
+          <td colspan="5" class="text-center">Загрузка...</td>
         </tr>
         <tr v-else-if="currentProducts.length === 0">
-          <td colspan="6" class="text-center">Нет товаров</td>
+          <td colspan="5" class="text-center">Нет товаров</td>
         </tr>
         <tr v-else v-for="product in currentProducts" :key="product.id">
-          <td>{{ product.id }}</td>
           <td><strong>{{ product.name }}</strong></td>
           <td>
-              <span :class="['type-badge', activeTypeTab]">
-                <template v-if="activeTypeTab === 'components'">Цветок</template>
-                <template v-else-if="activeTypeTab === 'bouquets'">Букет</template>
-                <template v-else-if="activeTypeTab === 'materials'">Материал</template>
-              </span>
+            <span :class="['type-badge', activeTypeTab]">
+              <template v-if="activeTypeTab === 'components'">Цветок</template>
+              <template v-else-if="activeTypeTab === 'bouquets'">Букет</template>
+              <template v-else-if="activeTypeTab === 'materials'">Материал</template>
+            </span>
           </td>
           <td>{{ product.price }} руб.</td>
           <td>
-              <span :class="['quantity-badge', getQuantityClass(product.quantity)]">
-                {{ product.quantity || 0 }} шт
-              </span>
+            <span :class="['quantity-badge', getQuantityClass(product.quantity)]">
+              {{ product.quantity || 0 }} шт
+            </span>
           </td>
           <td>
             <button @click="editProduct(product)" class="edit-btn">Редактировать</button>
@@ -100,7 +97,7 @@
       </table>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- Модальные окна (остаются без изменений) -->
     <AppendinWarehouseModal
       v-if="showAddModal"
       :is-editing="isEditing"
@@ -115,6 +112,7 @@
       v-if="showComingModal"
       :initial-data="comingData"
       :all-products="allProducts"
+      :users="dataStore.users"
       @close="showComingModal = false"
       @confirm="confirmComing"
     />
@@ -123,6 +121,7 @@
       v-if="showExpenseModal"
       :initial-data="expenseData"
       :all-products="allProducts"
+      :users="dataStore.users"
       @close="showExpenseModal = false"
       @confirm="confirmExpense"
     />
@@ -131,6 +130,7 @@
       v-if="showCreateBouquetModal"
       :initial-data="bouquetData"
       :flowers="dataStore.flowers"
+      :materials="dataStore.materials"
       :users="dataStore.users"
       @close="closeCreateBouquetModal"
       @confirm="confirmCreateBouquet"
@@ -429,12 +429,14 @@ const confirmComing = async (data) => {
     if (product.type === 'flower') {
       await dataStore.incoming_flower(product.id, {
         quantity: data.quantity,
-        reason: data.reason || 'Поставка от поставщика'
+        reason: data.reason || 'Поставка от поставщика',
+        user_id: data.user_id
       })
     } else if (product.type === 'material') {
       await dataStore.incoming_material(product.id, {
         quantity: data.quantity,
-        reason: data.reason || 'Поставка материала'
+        reason: data.reason || 'Поставка материала',
+        user_id: data.user_id
       })
     } else {
       const newQty = (product.quantity || 0) + data.quantity
@@ -470,12 +472,14 @@ const confirmExpense = async (data) => {
     if (product.type === 'flower') {
       await dataStore.outgoing_flower(product.id, {
         quantity: data.quantity,
-        reason: data.reason || 'Расход'
+        reason: data.reason || 'Расход',
+        user_id: data.user_id
       })
     } else if (product.type === 'material') {
       await dataStore.outgoing_material(product.id, {
         quantity: data.quantity,
-        reason: data.reason || 'Расход материала'
+        reason: data.reason || 'Расход материала',
+        user_id: data.user_id
       })
     } else {
       const newQty = (product.quantity || 0) - data.quantity
@@ -492,6 +496,86 @@ const confirmExpense = async (data) => {
 }
 
 // Подтвердить сборку букета
+// const confirmCreateBouquet = async (data) => {
+//   if (!data.name || !data.price) {
+//     alert('Заполните название и цену букета')
+//     return
+//   }
+//   if (!data.user_id) {
+//     alert('Выберите сотрудника, который собирает букет')
+//     return
+//   }
+//
+//   // Проверяем наличие всех компонентов
+//   for (const item of data.composition) {
+//     if (!item.itemable_id || !item.quantity) {
+//       alert('Заполните все компоненты букета')
+//       return
+//     }
+//
+//     if (item.itemable_type === 'flower') {
+//       const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+//       const requiredQty = item.quantity * data.quantity
+//       if (!flower || (flower.quantity || 0) < requiredQty) {
+//         alert(`Недостаточно цветов "${flower?.name}" на складе!`)
+//         return
+//       }
+//     } else if (item.itemable_type === 'material') {
+//       const material = dataStore.materials.find(m => m.id === item.itemable_id)
+//       const requiredQty = item.quantity * data.quantity
+//       if (!material || (material.quantity || 0) < requiredQty) {
+//         alert(`Недостаточно материала "${material?.name}" на складе!`)
+//         return
+//       }
+//     }
+//   }
+//
+//   try {
+//     // 1. Создаем букет
+//     const bouquetResult = await dataStore.create_bouquet({
+//       name: data.name,
+//       price: data.price,
+//       quantity: data.quantity,
+//       description: data.description,
+//       production_date: new Date().toISOString().split('T')[0]
+//     })
+//
+//     const bouquetId = bouquetResult.data?.id || bouquetResult.id
+//
+//     // 2. Добавляем компоненты в букет (bouquet_items)
+//     for (const item of data.composition) {
+//       await dataStore.create_bouquet_item({
+//         bouquet_id: bouquetId,
+//         itemable_id: item.itemable_id,
+//         itemable_type: item.itemable_type,  // 'flower' или 'material'
+//         quantity: item.quantity * data.quantity,
+//         user_id: data.user_id
+//       })
+//     }
+//
+//     // 3. Списываем компоненты со склада
+//     for (const item of data.composition) {
+//       if (item.itemable_type === 'flower') {
+//         const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+//         const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
+//         await dataStore.update_flower(flower.id, { quantity: newQty })
+//       } else if (item.itemable_type === 'material') {
+//         const material = dataStore.materials.find(m => m.id === item.itemable_id)
+//         const newQty = (material.quantity || 0) - (item.quantity * data.quantity)
+//         await dataStore.update_material(material.id, { quantity: newQty })
+//       }
+//     }
+//
+//     closeCreateBouquetModal()
+//     await loadData()
+//     alert('Букет успешно собран!')
+//   } catch (error) {
+//     console.error('Ошибка сборки букета:', error)
+//     alert('Ошибка при сборке букета')
+//   }
+// }
+
+// Подтвердить сборку букета
 const confirmCreateBouquet = async (data) => {
   if (!data.name || !data.price) {
     alert('Заполните название и цену букета')
@@ -504,17 +588,25 @@ const confirmCreateBouquet = async (data) => {
 
   // Проверяем наличие всех компонентов
   for (const item of data.composition) {
-    if (!item.flower_id || !item.quantity) {
+    if (!item.itemable_id || !item.quantity) {
       alert('Заполните все компоненты букета')
       return
     }
 
-    const flower = dataStore.flowers.find(f => f.id === item.flower_id)
-    const requiredQty = item.quantity * data.quantity
-
-    if (!flower || (flower.quantity || 0) < requiredQty) {
-      alert(`Недостаточно цветов "${flower?.name}" на складе!`)
-      return
+    if (item.itemable_type === 'flower') {
+      const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+      const requiredQty = item.quantity * data.quantity
+      if (!flower || (flower.quantity || 0) < requiredQty) {
+        alert(`Недостаточно цветов "${flower?.name}" на складе!`)
+        return
+      }
+    } else if (item.itemable_type === 'material') {
+      const material = dataStore.materials.find(m => m.id === item.itemable_id)
+      const requiredQty = item.quantity * data.quantity
+      if (!material || (material.quantity || 0) < requiredQty) {
+        alert(`Недостаточно материала "${material?.name}" на складе!`)
+        return
+      }
     }
   }
 
@@ -530,21 +622,34 @@ const confirmCreateBouquet = async (data) => {
 
     const bouquetId = bouquetResult.data?.id || bouquetResult.id
 
-    // 2. Добавляем цветы в букет (bouquet_items)
+    // 2. Добавляем компоненты в букет (bouquet_items)
     for (const item of data.composition) {
-      await dataStore.create_bouquet_item({
+      const payload = {
         bouquet_id: bouquetId,
-        flower_id: item.flower_id,
+        itemable_id: item.itemable_id,
+        itemable_type: item.itemable_type,
+        flower_id: item.itemable_id,
         quantity: item.quantity * data.quantity,
-        user_id: data.user_id  // ← передаем ID сотрудника
-      })
+        user_id: data.user_id
+      }
+
+      console.log('=== ОТПРАВКА В create_bouquet_item ===')
+      console.log('Payload:', JSON.stringify(payload, null, 2))
+
+      await dataStore.create_bouquet_item(payload)
     }
 
-    // 3. Списываем цветы со склада
+    // 3. Списываем компоненты со склада
     for (const item of data.composition) {
-      const flower = dataStore.flowers.find(f => f.id === item.flower_id)
-      const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
-      await dataStore.update_flower(flower.id, { quantity: newQty })
+      if (item.itemable_type === 'flower') {
+        const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+        const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
+        await dataStore.update_flower(flower.id, { quantity: newQty })
+      } else if (item.itemable_type === 'material') {
+        const material = dataStore.materials.find(m => m.id === item.itemable_id)
+        const newQty = (material.quantity || 0) - (item.quantity * data.quantity)
+        await dataStore.update_material(material.id, { quantity: newQty })
+      }
     }
 
     closeCreateBouquetModal()
@@ -552,7 +657,12 @@ const confirmCreateBouquet = async (data) => {
     alert('Букет успешно собран!')
   } catch (error) {
     console.error('Ошибка сборки букета:', error)
-    alert('Ошибка при сборке букета')
+    if (error.response?.data?.errors) {
+      console.error('Ошибки валидации:', error.response.data.errors)
+      alert('Ошибка: ' + JSON.stringify(error.response.data.errors))
+    } else {
+      alert('Ошибка при сборке букета')
+    }
   }
 }
 
@@ -588,282 +698,381 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .warehouse-page {
-  padding: 20px;
+  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
 }
 
+/* Верхняя панель */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f9cffd;
 }
 
 .top-bar h1 {
   margin: 0;
-  color: #000000;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.5px;
 }
 
+/* Навигация */
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: #f5f5f7;
+  padding: 0.3rem;
+  border-radius: 60px;
+}
+
+.nav-link {
+  padding: 0.6rem 1.5rem;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5b4e;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.nav-link:hover {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
+}
+
+/* Правая панель */
 .search-profile {
   display: flex;
-  gap: 20px;
+  gap: 1.5rem;
   align-items: center;
 }
 
-.global-search {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  width: 200px;
-}
-
-.profile {
-  font-weight: bold;
-  color: #000000;
-}
-
-.nav-tabs {
+.user-details {
   display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 10px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
 }
 
-.nav-tabs button {
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
+.user-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2c3e2f;
+  background: #f9cffd30;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.user-role {
+  font-weight: 600;
+  font-size: 0.8rem;
   color: #000000;
 }
 
-.nav-tabs button.active {
-  color: #000000;
-  border-bottom: 2px solid #000000;
+.logout-btn {
+  padding: 0.5rem 1.2rem;
+  background: #d9eb61;
+  text-decoration: none;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
+.logout-btn:hover {
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px #d9eb6180;
+}
+
+/* Заголовок раздела */
 .section-title {
-  margin-bottom: 20px;
-  color: #000000;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f9cffd;
+  margin: 1.5rem 0 2rem 0;
+  letter-spacing: -0.5px;
 }
 
+/* Кнопки действий */
 .action-buttons {
   display: flex;
-  gap: 15px;
-  margin-bottom: 25px;
+  gap: 1rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
-.btn-primary, .btn-secondary {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
+.btn-action {
+  padding: 0.7rem 1.8rem;
+  background: #ffffff;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-  background-color: #e0e0e0;
-  color: #000000;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
-.btn-primary:hover, .btn-secondary:hover {
-  background-color: #cccccc;
+.btn-action:hover {
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.3);
 }
 
+/* Вкладки типов товаров */
 .type-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
 }
 
 .type-tabs button {
-  padding: 8px 16px;
+  padding: 0.6rem 1.8rem;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  border-radius: 20px;
-  color: #000000;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  border-radius: 40px;
+  color: #4a5b4e;
+  transition: all 0.3s ease;
 }
 
 .type-tabs button.active {
-  background-color: #e0e0e0;
-  color: #000000;
+  background: #d9eb61;
+  color: #2c3e2f;
 }
 
+.type-tabs button:hover:not(.active) {
+  background: #f9cffd;
+  color: #2c3e2f;
+}
+
+/* Фильтры */
 .filters-bar {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 1rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
 }
 
 .search-input {
   flex: 1;
-  min-width: 200px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
+  min-width: 250px;
+  max-width: 400px;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid #f5f5f7;
+  border-radius: 40px;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #d9eb61;
+  box-shadow: 0 0 0 3px #d9eb6140;
 }
 
 .apply-btn {
-  padding: 10px 20px;
-  background-color: #e0e0e0;
-  color: #000000;
+  padding: 0.7rem 1.8rem;
+  background: #d9eb61;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
 .apply-btn:hover {
-  background-color: #cccccc;
+  background: #c4db3a;
+  transform: translateY(-2px);
 }
 
+/* Таблица */
 .products-table-container {
   overflow-x: auto;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .products-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-family: 'Inter', sans-serif;
 }
 
 .products-table th,
 .products-table td {
-  padding: 12px 15px;
+  padding: 1rem 1.2rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-  color: #000000;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .products-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #000000;
+  background-color: #f9f9fb;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #4a5b4e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .products-table tr:hover {
-  background-color: #f5f5f5;
+  background-color: #f9f9fb;
 }
 
+/* Бейджи типов (цветные) */
 .type-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 0.3rem 0.8rem;
+  border-radius: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .type-badge.components {
-  background-color: #f5f5f5;
-  color: #000000;
+  background: #f9cffd;
+  color: #8b3a8b;
 }
 
 .type-badge.bouquets {
-  background-color: #f5f5f5;
-  color: #000000;
+  background: #d9eb61;
+  color: #2c5e2c;
 }
 
+.type-badge.materials {
+  background: #77b7d3;
+  color: #1a3a4a;
+}
+
+/* Бейджи количества */
 .quantity-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
+  padding: 0.3rem 0.8rem;
+  border-radius: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .quantity-badge.in-stock {
-  color: #000000;
+  background: #d9eb6140;
+  color: #2c5e2c;
 }
 
 .quantity-badge.low-stock {
-  color: #000000;
+  background: #f9cffd;
+  color: #c44e3a;
 }
 
 .quantity-badge.out-of-stock {
-  color: #000000;
+  background: #f0f0f0;
+  color: #999999;
 }
 
+/* Кнопки действий в таблице */
 .edit-btn, .delete-btn {
-  padding: 6px 12px;
-  margin: 0 5px;
+  padding: 0.4rem 0.7rem;
+  margin: 0 0.2rem;
   border: none;
   cursor: pointer;
-  background-color: #e0e0e0;
-  color: #000000;
-  border-radius: 4px;
-  font-size: 12px;
+  background: #f5f5f7;
+  border-radius: 30px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
-.edit-btn:hover, .delete-btn:hover {
-  background-color: #cccccc;
+.edit-btn:hover {
+  background: #d9eb61;
   transform: scale(1.05);
 }
 
+.delete-btn:hover {
+  background: #f9cffd;
+  transform: scale(1.05);
+}
+
+/* Ошибка */
 .error-message {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background-color: #f44336;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
+  background: #fef2f0;
+  color: #e85d4a;
+  padding: 0.8rem 1.2rem;
+  border-radius: 40px;
   display: flex;
-  gap: 10px;
+  gap: 0.8rem;
   align-items: center;
   z-index: 1001;
+  font-size: 0.85rem;
+  font-weight: 500;
+
 }
 
 .error-message button {
   background: none;
   border: none;
-  color: white;
+  color: #e85d4a;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 1rem;
 }
 
 .text-center {
   text-align: center;
 }
 
-.logout-btn {
-  display: inline-block;
-  padding: 6px 16px;
-  background-color: #e0e0e0;
-  color: #000000;
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.3s;
-}
+/* Адаптив */
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    gap: 1rem;
+  }
 
-.logout-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
-}
+  .nav-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 
-.user-details {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
+  .section-title {
+    font-size: 1.5rem;
+  }
 
-.user-name {
-  font-weight: 600;
-  color: #000000;
-
-}
-
-.user-role {
-  font-weight: 600;
-  color: #000000;
+  .action-buttons {
+    justify-content: center;
+  }
 }
 </style>

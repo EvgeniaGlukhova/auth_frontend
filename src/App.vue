@@ -20,4 +20,10 @@ body {
   font-family: Arial, sans-serif;
   background-color: #f5f5f5;
 }
+
+.top-bar h1,
+.modal-header h3,
+.section-title{
+  color: #e07bc4 !important;
+}
 </style>

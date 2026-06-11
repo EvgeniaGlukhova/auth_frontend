@@ -1,23 +1,22 @@
 <template>
   <div class="analytics-page">
-    <!-- Верхняя панель -->
+    <!-- Верхняя панель с навигацией -->
     <div class="top-bar">
-      <h1>Цветочный магазин</h1>
+      <h1>Sunshine</h1>
+      <div class="nav-tabs">
+        <router-link to="/dashboard" class="nav-link">Главная</router-link>
+        <router-link to="/warehouse" class="nav-link">Склад</router-link>
+        <router-link to="/customers" class="nav-link">Клиенты</router-link>
+        <router-link to="/orders" class="nav-link">Заказы</router-link>
+        <router-link to="/analytics" class="nav-link active">Аналитика</router-link>
+      </div>
       <div class="profile-section">
         <div class="user-details">
           <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
           <span class="user-role">{{ getRoleName() }}</span>
         </div>
-        <button @click="goToDashboard" class="logout-btn">Выход</button>
+<!--        <button @click="goToDashboard" class="logout-btn">Выйти</button>-->
       </div>
-    </div>
-
-    <!-- Навигация -->
-    <div class="nav-tabs">
-      <button @click="goToWarehouse">Склад</button>
-      <button @click="goToCustomers">Клиенты</button>
-      <button @click="goToOrders">Заказы</button>
-      <button class="active">Аналитика</button>
     </div>
 
     <!-- Заголовок -->
@@ -28,7 +27,7 @@
       <!-- Блок сотрудников -->
       <div class="module-card" @click="openEmployeesBlock">
         <div class="card-icon"></div>
-        <h3>СОТРУДНИКИ</h3>
+        <h3>Сотрудники</h3>
         <div class="features">
           <p>Список сотрудников</p>
           <p>Добавление</p>
@@ -41,7 +40,7 @@
       <!-- Блок расписания -->
       <div class="module-card" @click="openScheduleBlock">
         <div class="card-icon"></div>
-        <h3>РАСПИСАНИЕ</h3>
+        <h3>Расписание</h3>
         <div class="features">
           <p>Смены по дням</p>
           <p>Назначение сотрудников</p>
@@ -53,7 +52,7 @@
       <!-- Блок отчетов -->
       <div class="module-card" @click="openReportsBlock">
         <div class="card-icon"></div>
-        <h3>ОТЧЕТЫ</h3>
+        <h3>Отчеты</h3>
         <div class="features">
           <p>По продажам</p>
           <p>По заказам</p>
@@ -134,84 +133,126 @@ const openReportsBlock = () => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .analytics-page {
-  padding: 20px;
+  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
 }
 
+/* Верхняя панель */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f9cffd;
 }
 
 .top-bar h1 {
   margin: 0;
-  color: #000000;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.5px;
 }
 
+/* Навигация */
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: #f5f5f7;
+  padding: 0.3rem;
+  border-radius: 60px;
+}
+
+.nav-link {
+  padding: 0.6rem 1.5rem;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5b4e;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.nav-link:hover {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
+}
+
+/* Профиль */
 .profile-section {
   display: flex;
-  gap: 20px;
+  gap: 1.5rem;
   align-items: center;
 }
 
-.profile {
-  font-weight: bold;
+.user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.user-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2c3e2f;
+  background: #f9cffd30;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.user-role {
+  font-weight: 600;
+  font-size: 0.8rem;
   color: #000000;
 }
 
 .logout-btn {
-  display: inline-block;
-  padding: 6px 16px;
-  background-color: #e0e0e0;
-  color: #000000;
+  padding: 0.5rem 1.2rem;
+  background: #d9eb61;
   text-decoration: none;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.3s;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
   cursor: pointer;
   border: none;
 }
 
 .logout-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px #d9eb6180;
 }
 
-.nav-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 10px;
-}
-
-.nav-tabs button {
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  color: #000000;
-}
-
-.nav-tabs button.active {
-  color: #000000;
-  border-bottom: 2px solid #000000;
-}
-
+/* Заголовок раздела */
 .section-title {
-  margin-bottom: 30px;
-  color: #000000;
-  font-size: 24px;
   text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f9cffd;
+  margin: 0 0 2rem 0;
+  letter-spacing: -0.5px;
 }
 
+/* Сетка карточек */
 .modules-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -220,19 +261,39 @@ const openReportsBlock = () => {
   margin: 0 auto;
 }
 
+/* Карточка */
 .module-card {
-  background: #f0f0f0;
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 1.8rem;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: all 0.3s ease;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 18px rgba(119, 183, 211, 0.08);
+  border: 1px solid #f5f5f7;
+  position: relative;
 }
 
+/* Зеленая подсветка всегда */
+.module-card {
+  box-shadow: 0 0 0 2px #d9eb61, 0 8px 18px rgba(119, 183, 211, 0.08);
+}
+
+/* При наведении - полностью зеленый фон */
 .module-card:hover {
+  background: #d9eb61;
   transform: translateY(-5px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0 3px #c4db3a, 0 20px 30px -12px rgba(217, 235, 97, 0.5);
+  border-color: #c4db3a;
+}
+
+/* При наведении текст остается темным */
+.module-card:hover h3 {
+  color: #2c3e2f;
+}
+
+.module-card:hover .features p {
+  color: #2c3e2f;
 }
 
 .card-icon {
@@ -241,57 +302,70 @@ const openReportsBlock = () => {
 
 .module-card h3 {
   margin-bottom: 1rem;
-  color: #000000;
-  font-size: 18px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2c3e2f;
+  letter-spacing: 0.5px;
 }
 
 .features {
-  margin: 1rem 0;
+  margin: 1.2rem 0;
 }
 
 .features p {
-  margin: 8px 0;
-  color: #000000;
-  font-size: 14px;
+  margin: 0.5rem 0;
+  color: #4a5b4e;
+  font-size: 0.85rem;
   text-align: left;
-  padding-left: 10px;
+  padding-left: 1rem;
+  transition: color 0.3s ease;
 }
 
+/* Кнопка внутри карточки */
 .card-btn {
-  margin-top: 15px;
-  padding: 8px 16px;
-  background-color: #e0e0e0;
-  color: #000000;
-  border: none;
-  border-radius: 8px;
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
 .card-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
+  background: #c4db3a;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(217, 235, 97, 0.3);
 }
 
-.user-details {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
+.module-card:hover .card-btn {
+  background: #ffffff;
+  border-color: #c4db3a;
 }
 
-.user-name {
-  font-weight: 600;
-  color: #000000;
-
+/* Адаптив */
+@media (max-width: 900px) {
+  .modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
 }
 
-.user-role {
-  font-weight: 600;
-  color: #000000;
-}
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    gap: 1rem;
+  }
 
-@media (max-width: 800px) {
+  .nav-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
   .modules-grid {
     grid-template-columns: 1fr;
   }

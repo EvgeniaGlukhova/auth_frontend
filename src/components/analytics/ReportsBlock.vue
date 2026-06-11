@@ -3,7 +3,7 @@
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h3>Отчеты и аналитика</h3>
-        <button class="close-btn" @click="$emit('close')">X</button>
+        <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
 
       <div class="modal-body">
@@ -109,6 +109,10 @@
         </div>
       </div>
 
+      <div class="modal-buttons">
+        <button @click="exportFullReportToExcel" class="export-btn">Экспорт в Excel</button>
+      </div>
+
       <div class="loading-overlay" v-if="loading">
         <div class="spinner"></div>
       </div>
@@ -121,6 +125,25 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import api from '../../services/api'
 import { useDataStore } from '../../stores/dataStore'
+
+import { exportFullReport } from '../../utils/excelExport'
+
+// Экспорт всего отчета
+const exportFullReportToExcel = () => {
+  exportFullReport({
+    period: selectedPeriod.value,
+    monthName: monthName.value,
+    revenue: revenue.value,
+    clientsStat: clientsStat.value,
+    ordersStat: ordersStat.value,
+    topFlowers: topFlowers.value,
+    topBouquets: topBouquets.value,
+    movementsSummary: movementsSummary.value,
+    flowerMovements: flowerMovements.value,
+    employeeSales: employeeSales.value,
+    employeeShifts: employeeShifts.value
+  })
+}
 
 Chart.register(...registerables)
 
@@ -277,16 +300,44 @@ const loadTopProducts = async () => {
   }
 }
 
-// Загрузка движения цветов
+
+// Загрузка движения товаров
 const loadFlowerMovements = async () => {
   try {
+    const token = localStorage.getItem('access_token')
+    console.log('Токен для запроса движений:', token ? 'есть' : 'нет')
     const params = getMovementsParams()
-    const response = await api.get('/reports/flower-movements', { params })
-    flowerMovements.value = response.data.data || []
-    movementsSummary.value = response.data.summary || {}
+    console.log('Параметры запроса:', params)
+    // Добавляем параметр movable_type для фильтрации цветов
+    const response = await api.get('/reports/movements', {
+      params: {
+        ...params,
+        movable_type: 'App\\Models\\Flower'
+      }
+    })
+    console.log('Ответ от сервера:', response.data)
+
+    let movements = []
+    if (response.data.success) {
+      movements = response.data.data
+    }
+
+    console.log('Движений получено:', movements.length)
+
+    flowerMovements.value = movements
+
+    // Считаем сводку как в старом методе
+    movementsSummary.value = {
+      total_incoming: movements.filter(m => m.type === 'incoming').reduce((s, m) => s + m.quantity, 0),
+      total_outgoing: movements.filter(m => m.type === 'outgoing').reduce((s, m) => s + m.quantity, 0),
+      total_loss: movements.filter(m => m.type === 'loss').reduce((s, m) => s + m.quantity, 0)
+    }
+
     drawFlowerMovementsChart()
   } catch (error) {
     console.error('Ошибка загрузки движения цветов:', error)
+    flowerMovements.value = []
+    movementsSummary.value = { total_incoming: 0, total_outgoing: 0, total_loss: 0 }
   }
 }
 
@@ -340,8 +391,8 @@ const drawRevenueChart = () => {
         datasets: [{
           label: 'Выручка (руб)',
           data: [0],
-          borderColor: '#888888',
-          backgroundColor: 'rgba(136, 136, 136, 0.1)',
+          borderColor: '#d9eb61',
+          backgroundColor: '#d9eb6120',
         }]
       },
       options: {
@@ -362,8 +413,8 @@ const drawRevenueChart = () => {
       datasets: [{
         label: 'Выручка (руб)',
         data: revenueChartData.value,
-        borderColor: '#888888',
-        backgroundColor: 'rgba(136, 136, 136, 0.1)',
+        borderColor: '#d9eb61',
+        backgroundColor: '#d9eb6120',
         tension: 0.4,
         fill: true
       }]
@@ -418,7 +469,7 @@ const drawTopProductsChart = () => {
       datasets: [{
         label: 'Количество продаж',
         data: data,
-        backgroundColor: '#aaaaaa',
+        backgroundColor: '#77b7d3',
         borderRadius: 8
       }]
     },
@@ -449,7 +500,7 @@ const drawOrdersStatusChart = () => {
           ordersStat.value.cancelled_orders || 0,
           ordersStat.value.pending_orders || 0
         ],
-        backgroundColor: ['#aaaaaa', '#cccccc', '#dddddd'],
+        backgroundColor: ['#d9eb61', '#f9cffd', '#77b7d3'],
         borderWidth: 0
       }]
     },
@@ -479,7 +530,7 @@ const drawFlowerMovementsChart = () => {
           movementsSummary.value.total_outgoing || 0,
           movementsSummary.value.total_loss || 0
         ],
-        backgroundColor: ['#aaaaaa', '#bbbbbb', '#cccccc'],
+        backgroundColor: ['#d9eb61', '#77b7d3', '#f9cffd'],
         borderRadius: 8
       }]
     },
@@ -505,7 +556,7 @@ const drawEmployeeSalesChart = () => {
       datasets: [{
         label: 'Сумма продаж (руб)',
         data: employeeSales.value.map(s => s.total_sales || 0),
-        backgroundColor: '#aaaaaa',
+        backgroundColor: '#77b7d3',
         borderRadius: 8
       }]
     },
@@ -570,7 +621,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Ваши стили остаются без изменений */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -578,6 +630,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -585,8 +638,8 @@ onMounted(() => {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 28px;
   width: 95%;
   max-width: 1400px;
   max-height: 90vh;
@@ -594,39 +647,70 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   position: relative;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* Скроллбар */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 10px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
-  border-radius: 16px 16px 0 0;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #f9cffd;
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e07bc4;
+  letter-spacing: -0.3px;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #999999;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
+  transform: scale(1.05);
 }
 
 .modal-body {
   flex: 1;
-  padding: 20px;
+  padding: 1.5rem;
   overflow-y: auto;
 }
 
@@ -636,19 +720,19 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10;
-  border-radius: 16px;
+  border-radius: 28px;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e0e0e0;
-  border-top: 3px solid #aaaaaa;
+  border: 3px solid #f9cffd;
+  border-top: 3px solid #d9eb61;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -659,160 +743,204 @@ onMounted(() => {
 }
 
 .reports-container {
-  padding: 10px;
+  padding: 0.5rem;
 }
 
+/* Период и навигация */
 .period-selector {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 1.8rem;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 1rem;
 }
 
 .period-buttons {
   display: flex;
-  gap: 10px;
+  gap: 0.5rem;
   flex-wrap: wrap;
+  background: #f9f9fb;
+  padding: 0.3rem;
+  border-radius: 60px;
 }
 
 .period-buttons button {
-  padding: 8px 20px;
-  background: #e0e0e0;
+  padding: 0.5rem 1.2rem;
+  background: transparent;
   border: none;
-  border-radius: 20px;
+  border-radius: 40px;
   cursor: pointer;
-  transition: all 0.3s;
-  font-size: 14px;
-  color: #000000;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #4a5b4e;
+  transition: all 0.3s ease;
 }
 
 .period-buttons button:hover {
-  background: #cccccc;
+  background: #f9cffd;
+  color: #8b3a8b;
 }
 
 .period-buttons button.active {
-  background: #aaaaaa;
-  color: #000000;
+  background: #d9eb61;
+  color: #2c3e2f;
 }
 
 .date-range, .month-selector {
   display: flex;
-  gap: 10px;
+  gap: 0.5rem;
   align-items: center;
 }
 
 .date-range input, .month-selector input {
-  padding: 6px 12px;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  border: 2px solid #f5f5f7;
+  border-radius: 40px;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
   color: #000000;
-  background: white;
+  background: #ffffff;
+  transition: all 0.3s ease;
 }
 
+.date-range input:focus, .month-selector input:focus {
+  outline: none;
+  border-color: #d9eb61;
+  box-shadow: 0 0 0 3px #d9eb6140;
+}
+
+/* Карточки статистики */
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 1.2rem;
+  margin-bottom: 1.8rem;
 }
 
 .stat-card {
-  background: #f0f0f0;
-  border-radius: 12px;
-  padding: 20px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.2rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
+  box-shadow: 0 0 0 2px #d9eb61, 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 3px #d9eb61, 0 8px 20px rgba(217, 235, 97, 0.2);
 }
 
 .stat-title {
-  font-size: 14px;
-  color: #666666;
-  margin-bottom: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4a5b4e;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: #000000;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e07bc4;
 }
 
+/* Графики */
 .chart-container {
-  background: #f0f0f0;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  height: 400px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.2rem;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f5f5f7;
+  height: 380px;
 }
 
 .chart-container canvas, .chart-half canvas {
-  max-height: 300px;
+  max-height: 280px;
 }
 
 .charts-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
 }
 
 .chart-half {
-  background: #f0f0f0;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f5f5f7;
   height: auto;
-  min-height: 400px;
+  min-height: 380px;
 }
 
 .chart-half h3, .chart-container h3, .table-container h3 {
   margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 16px;
-  color: #000000;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #e07bc4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .movements-summary {
   display: flex;
   justify-content: space-around;
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
-  font-size: 14px;
-  color: #000000;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f5f5f7;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2c3e2f;
 }
 
+/* Таблица */
 .table-container {
-  background: #f0f0f0;
-  border-radius: 12px;
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.2rem;
+  margin-top: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f5f5f7;
   overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
 }
 
 .data-table th,
 .data-table td {
-  padding: 12px;
+  padding: 0.8rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #f0f0f0;
   color: #000000;
+  font-size: 0.85rem;
 }
 
 .data-table th {
-  background: #e0e0e0;
+  background: #f9f9fb;
   font-weight: 600;
-  color: #000000;
+  color: #4a5b4e;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
+.data-table tr:hover {
+  background: #f9f9fb;
+}
+
+/* Адаптив */
 @media (max-width: 900px) {
   .stats-cards {
     grid-template-columns: repeat(2, 1fr);
@@ -820,5 +948,47 @@ onMounted(() => {
   .charts-row {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 600px) {
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  .period-selector {
+    flex-direction: column;
+  }
+}
+
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
+}
+
+.export-btn {
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
+  color: #2c3e2f;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.2);
+}
+
+.export-btn:hover {
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 </style>

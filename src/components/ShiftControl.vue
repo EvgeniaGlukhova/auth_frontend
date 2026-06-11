@@ -4,22 +4,25 @@
       {{ activeShift ? 'ЗАКРЫТЬ СМЕНУ' : 'ОТКРЫТЬ СМЕНУ' }}
     </button>
 
-    <!-- Модальное окно -->
+    <!-- Модальное окно подтверждения -->
     <div v-if="showModal" class="modal-overlay" @click="showModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>{{ activeShift ? 'Закрытие смены' : 'Открытие смены' }}</h3>
-          <button class="close-btn" @click="showModal = false">X</button>
+          <button class="close-btn" @click="showModal = false">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>{{ activeShift ? 'Время окончания:' : 'Время начала:' }}</label>
-            <input
-              type="time"
-              v-model="timeValue"
-              class="form-input"
-              :required="!activeShift"
-            >
+          <div class="confirm-info">
+            <p v-if="!activeShift">
+              Вы действительно хотите <strong>открыть смену</strong>?
+            </p>
+            <p v-else>
+              Вы действительно хотите <strong>закрыть смену</strong>?
+            </p>
+            <div class="time-info">
+              <span class="time-label">Время:</span>
+              <span class="time-value">{{ currentTime }}</span>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -34,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useDataStore } from '../stores/dataStore'
 
@@ -51,37 +54,34 @@ const authStore = useAuthStore()
 const dataStore = useDataStore()
 
 const showModal = ref(false)
-const timeValue = ref('')
+
+// Текущее время в формате HH:MM
+const currentTime = computed(() => {
+  const now = new Date()
+  const hours = now.getHours().toString().padStart(2, '0')
+  const minutes = now.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+})
 
 const openShiftModal = () => {
-  if (props.activeShift) {
-    timeValue.value = ''
-  } else {
-    timeValue.value = '09:00'
-  }
   showModal.value = true
 }
 
 const confirmAction = async () => {
-  if (!timeValue.value) {
-    alert(props.activeShift ? 'Укажите время окончания смены' : 'Укажите время начала смены')
-    return
-  }
-
   try {
     if (props.activeShift) {
-      // Закрытие смены
+      // Закрытие смены - подставляем текущее время
       await dataStore.update_workshift(props.activeShift.id, {
-        end_time: timeValue.value,
+        end_time: currentTime.value,
         closed_at: new Date().toISOString()
       })
       emit('shift-closed')
     } else {
-      // Открытие смены
+      // Открытие смены - подставляем текущее время
       const shiftData = {
         user_id: authStore.user?.id,
         date: new Date().toISOString().split('T')[0],
-        start_time: timeValue.value
+        start_time: currentTime.value
       }
       await dataStore.create_workshift(shiftData)
       emit('shift-opened')
@@ -95,28 +95,36 @@ const confirmAction = async () => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .shift-control {
   text-align: center;
   margin: 20px 0;
+  font-family: 'Inter', sans-serif;
 }
 
+/* Кнопка открыть/закрыть смену */
 .shift-btn {
-  padding: 12px 24px;
+  padding: 12px 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: all 0.3s;
-  background-color: #e0e0e0;
-  color: #000000;
+  transition: all 0.3s ease;
+  background: #d9eb61;
+  color: #2c3e2f;
+  box-shadow: 0 2px 8px rgba(217, 235, 97, 0.3);
 }
 
 .shift-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.02);
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 
+/* Затемнение */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -124,104 +132,153 @@ const confirmAction = async () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
 }
 
+/* Модальное окно */
 .modal-content {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 28px;
   width: 90%;
-  max-width: 350px;
+  max-width: 380px;
   overflow: hidden;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
 }
 
+/* Шапка модального окна */
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  padding: 20px 24px;
+  border-bottom: 2px solid #f9cffd;
+  background: #ffffff;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.3px;
 }
 
+/* Кнопка закрытия (крестик) */
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
   color: #999999;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
+  transform: scale(1.05);
 }
 
+/* Тело модального окна */
 .modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
+.confirm-info {
+  text-align: center;
+}
+
+.confirm-info p {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  color: #2c3e2f;
+  line-height: 1.4;
+}
+
+.confirm-info strong {
+  color: #e07bc4;
+}
+
+.time-info {
+  background: #f5f5f7;
+  border-radius: 40px;
+  padding: 12px 20px;
+  display: inline-flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.time-label {
+  font-weight: 600;
+  color: #2c3e2f;
+}
+
+.time-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2c3e2f;
+}
+
+/* Нижняя часть с кнопками */
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  gap: 12px;
+  padding: 16px 24px 24px 24px;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #000000;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #cccccc;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #000000;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #999999;
-}
-
+/* Кнопка Отмена */
 .cancel-btn {
-  padding: 8px 16px;
-  background: #e0e0e0;
+  padding: 10px 24px;
+  background: #f5f5f7;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
-  color: #000000;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
 .cancel-btn:hover {
-  background: #cccccc;
+  background: #e8e8ec;
+  transform: translateY(-1px);
 }
 
+/* Кнопка Открыть/Закрыть (зеленая) */
 .confirm-btn {
-  padding: 8px 16px;
-  background: #e0e0e0;
-  color: #000000;
+  padding: 10px 28px;
+  background: #d9eb61;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
 }
 
 .confirm-btn:hover {
-  background: #cccccc;
-  opacity: 0.9;
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 </style>

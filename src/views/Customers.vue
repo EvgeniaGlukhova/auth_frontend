@@ -1,23 +1,22 @@
 <template>
   <div class="customers-page">
-    <!-- Верхняя панель -->
+    <!-- Верхняя панель с навигацией -->
     <div class="top-bar">
-      <h1>Цветочный магазин</h1>
+      <h1>Sunshine</h1>
+      <div class="nav-tabs">
+        <router-link to="/dashboard" class="nav-link">Главная</router-link>
+        <router-link to="/warehouse" class="nav-link">Склад</router-link>
+        <router-link to="/customers" class="nav-link active">Клиенты</router-link>
+        <router-link to="/orders" class="nav-link">Заказы</router-link>
+        <router-link to="/analytics" class="nav-link">Аналитика</router-link>
+      </div>
       <div class="search-profile">
         <div class="user-details">
           <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
           <span class="user-role">{{ getRoleName() }}</span>
         </div>
-        <router-link to="/dashboard" class="logout-btn">Выход</router-link>
+<!--        <router-link to="/dashboard" class="logout-btn">Выйти</router-link>-->
       </div>
-    </div>
-
-    <!-- Навигация -->
-    <div class="nav-tabs">
-      <button @click="$router.push('/warehouse')">Склад</button>
-      <button class="active">Клиенты</button>
-      <button @click="$router.push('/orders')">Заказы</button>
-      <button @click="$router.push('/analytics')">Аналитика</button>
     </div>
 
     <!-- Заголовок раздела -->
@@ -25,27 +24,21 @@
 
     <!-- Кнопки действий -->
     <div class="action-buttons">
-      <button @click="openAddModal" class="btn-primary">Добавить клиента</button>
-      <button @click="openCallModal" class="btn-primary">Позвонить</button>
-      <button @click="openSmsModal" class="btn-primary">SMS</button>
+      <button @click="openAddModal" class="btn-action">Добавить клиента</button>
+      <button @click="openCallModal" class="btn-action">Позвонить</button>
+      <button @click="openSmsModal" class="btn-action">SMS</button>
     </div>
 
-    <!-- Поиск и фильтр -->
-<!--    <div class="filters-bar">-->
-<!--      <input-->
-<!--        type="text"-->
-<!--        v-model="searchQuery"-->
-<!--        placeholder="Поиск по имени, телефону или email..."-->
-<!--        class="search-input"-->
-<!--        @keyup.enter="loadData"-->
-<!--      >-->
-<!--      <select v-model="filterType" class="filter-select">-->
-<!--        <option value="all">Все клиенты</option>-->
-<!--        <option value="has_orders">С заказами</option>-->
-<!--        <option value="no_orders">Без заказов</option>-->
-<!--      </select>-->
-<!--      <button @click="loadData" class="apply-btn">Применить</button>-->
-<!--    </div>-->
+    <div class="filters-bar">
+      <input
+        type="text"
+        v-model="searchQuery"
+        placeholder="Поиск по названию..."
+        class="search-input"
+        @keyup.enter="applySearch"
+      >
+      <button @click="applySearch" class="apply-btn">Применить</button>
+    </div>
 
     <!-- Таблица клиентов -->
     <div class="table-container">
@@ -82,17 +75,12 @@
       </table>
     </div>
 
-<!--    &lt;!&ndash; Информация о количестве &ndash;&gt;-->
-<!--    <div class="info-footer">-->
-<!--      <span>Всего клиентов: {{ dataStore.clients_total }}</span>-->
-<!--    </div>-->
-
     <!-- Модальное окно добавления/редактирования клиента -->
     <div v-if="showClientModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>{{ isEditing ? 'Редактирование клиента' : 'Добавление нового клиента' }}</h3>
-          <button class="close-btn" @click="closeModal">X</button>
+          <button class="close-btn" @click="closeModal">✕</button>
         </div>
 
         <div class="form-row">
@@ -148,44 +136,44 @@
       </div>
     </div>
 
-<!--    &lt;!&ndash; Модальное окно звонка (заглушка) &ndash;&gt;-->
-<!--    <div v-if="showCallModal" class="modal-overlay" @click="showCallModal = false">-->
-<!--      <div class="modal-content small-modal" @click.stop>-->
-<!--        <div class="modal-header">-->
-<!--          <h3>Позвонить клиенту</h3>-->
-<!--          <button class="close-btn" @click="showCallModal = false">X</button>-->
-<!--        </div>-->
-<!--        <div class="call-content">-->
-<!--          <p>Функция звонка в разработке</p>-->
-<!--          <p class="call-note">Вы сможете звонить клиентам через IP-телефонию</p>-->
-<!--        </div>-->
-<!--        <div class="modal-buttons">-->
-<!--          <button @click="showCallModal = false" class="confirm-btn">Закрыть</button>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </div>-->
+    <!-- Модальное окно звонка (заглушка) -->
+    <div v-if="showCallModal" class="modal-overlay" @click="showCallModal = false">
+      <div class="modal-content small-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Позвонить клиенту</h3>
+          <button class="close-btn" @click="showCallModal = false">✕</button>
+        </div>
+        <div class="call-content">
+          <p>Функция звонка в разработке</p>
+          <p class="call-note">Вы сможете звонить клиентам через IP-телефонию</p>
+        </div>
+        <div class="modal-buttons">
+          <button @click="showCallModal = false" class="confirm-btn">Закрыть</button>
+        </div>
+      </div>
+    </div>
 
-<!--    &lt;!&ndash; Модальное окно SMS (заглушка) &ndash;&gt;-->
-<!--    <div v-if="showSmsModal" class="modal-overlay" @click="showSmsModal = false">-->
-<!--      <div class="modal-content small-modal" @click.stop>-->
-<!--        <div class="modal-header">-->
-<!--          <h3>Отправить SMS</h3>-->
-<!--          <button class="close-btn" @click="showSmsModal = false">X</button>-->
-<!--        </div>-->
-<!--        <div class="sms-content">-->
-<!--          <p>Функция SMS-рассылки в разработке</p>-->
-<!--          <p class="sms-note">Вы сможете отправлять SMS клиентам</p>-->
-<!--        </div>-->
-<!--        <div class="modal-buttons">-->
-<!--          <button @click="showSmsModal = false" class="confirm-btn">Закрыть</button>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </div>-->
+    <!-- Модальное окно SMS (заглушка) -->
+    <div v-if="showSmsModal" class="modal-overlay" @click="showSmsModal = false">
+      <div class="modal-content small-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Отправить SMS</h3>
+          <button class="close-btn" @click="showSmsModal = false">✕</button>
+        </div>
+        <div class="sms-content">
+          <p>Функция SMS-рассылки в разработке</p>
+          <p class="sms-note">Вы сможете отправлять SMS клиентам</p>
+        </div>
+        <div class="modal-buttons">
+          <button @click="showSmsModal = false" class="confirm-btn">Закрыть</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Сообщение об ошибке -->
     <div v-if="dataStore.errorMessage" class="error-message">
       {{ dataStore.errorMessage }}
-      <button @click="dataStore.errorMessage = ''">X</button>
+      <button @click="dataStore.errorMessage = ''">✕</button>
     </div>
   </div>
 </template>
@@ -251,8 +239,18 @@ const getFullName = (client) => {
 
 // Загрузка данных
 const loadData = async () => {
+  console.log('loadData, searchQuery:', searchQuery.value)
   await dataStore.get_clients(searchQuery.value)
 }
+
+// Применить поиск
+const applySearch = async () => {
+  console.log('applySearch, searchQuery:', searchQuery.value)
+  console.log('Поиск:', searchQuery.value)
+  await loadData()
+  console.log('После загрузки, клиентов:', dataStore.clients?.length)
+}
+
 
 // Открыть модалку добавления
 const openAddModal = () => {
@@ -363,163 +361,187 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .customers-page {
-  padding: 20px;
+  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
 }
 
+/* Верхняя панель */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f9cffd;
 }
 
 .top-bar h1 {
   margin: 0;
-  color: #000000;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.5px;
 }
 
-.search-profile {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-.profile {
-  font-weight: bold;
-  color: #000000;
-}
-
+/* Навигация */
 .nav-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 10px;
+  gap: 0.5rem;
+  background: #f5f5f7;
+  padding: 0.3rem;
+  border-radius: 60px;
 }
 
-.nav-tabs button {
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  color: #000000;
+.nav-link {
+  padding: 0.6rem 1.5rem;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5b4e;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
 }
 
-.nav-tabs button.active {
-  color: #000000;
-  border-bottom: 2px solid #000000;
+.nav-link:hover {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
+  transform: translateY(-2px);
 }
 
-.section-title {
-  margin-bottom: 20px;
-  color: #000000;
+.nav-link.active {
+  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
+  color: #2c3e2f;
 }
 
-.action-buttons {
+/* Профиль */
+.search-profile {
   display: flex;
-  gap: 15px;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-  background-color: #e0e0e0;
-  color: #000000;
-}
-
-.btn-primary:hover {
-  background-color: #cccccc;
-}
-
-.filters-bar {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  gap: 1.5rem;
   align-items: center;
 }
 
-.search-input {
-  flex: 1;
-  min-width: 250px;
-  padding: 10px;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  font-size: 14px;
+.user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.user-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2c3e2f;
+  background: #f9cffd30;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.user-role {
+  font-weight: 600;
+  font-size: 0.8rem;
   color: #000000;
 }
 
-.search-input::placeholder {
-  color: #999999;
+.logout-btn {
+  padding: 0.5rem 1.2rem;
+  background: #d9eb61;
+  text-decoration: none;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
-.filter-select {
-  padding: 10px;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  background: #e0e0e0;
-  color: #000000;
-  min-width: 150px;
+.logout-btn:hover {
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px #d9eb6180;
 }
 
-.apply-btn {
-  padding: 10px 20px;
-  background-color: #e0e0e0;
-  color: #000000;
-  border: none;
-  border-radius: 6px;
+/* Заголовок раздела */
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f9cffd;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+/* Кнопки действий */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.btn-action {
+  padding: 0.8rem 2rem;
+  background: #ffffff;
+  border: 2px solid #d9eb61;
+  border-radius: 40px;
   cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
 }
 
-.apply-btn:hover {
-  background-color: #cccccc;
+.btn-action:hover {
+  background: #d9eb61;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.3);
 }
 
+/* Таблица */
 .table-container {
   overflow-x: auto;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .customers-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-family: 'Inter', sans-serif;
 }
 
 .customers-table th,
 .customers-table td {
-  padding: 12px 15px;
+  padding: 1rem 1.2rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-  color: #000000;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .customers-table th {
-  background-color: #f0f0f0;
-  font-weight: 600;
-  color: #000000;
+  background-color: #f9f9fb;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #4a5b4e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .customers-table tr:hover {
-  background-color: #f5f5f5;
+  background-color: #f9f9fb;
 }
 
 .full-name {
-  width: 250px;
+  font-weight: 600;
+  color: #2c3e2f;
 }
 
 .contacts {
@@ -527,35 +549,35 @@ onMounted(() => {
 }
 
 .phone, .email, .address {
-  font-size: 14px;
-  color: #000000;
+  font-size: 0.85rem;
+  color: #000000;;
+  margin: 0.2rem 0;
 }
 
+/* Кнопки действий в таблице */
 .actions {
-  width: 160px;
+  white-space: nowrap;
 }
 
 .edit-btn, .delete-btn {
-  padding: 6px 12px;
-  margin: 0 5px;
+  padding: 0.4rem 0.7rem;
+  margin: 0 0.2rem;
   border: none;
   cursor: pointer;
-  background-color: #e0e0e0;
-  color: #000000;
-  border-radius: 4px;
-  font-size: 12px;
+  background: #f5f5f7;
+  border-radius: 30px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
-.edit-btn:hover, .delete-btn:hover {
-  background-color: #cccccc;
+.edit-btn:hover {
+  background: #d9eb61;
+  transform: scale(1.05);
 }
 
-.info-footer {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
-  text-align: right;
-  color: #000000;
+.delete-btn:hover {
+  background: #f9cffd;
+  transform: scale(1.05);
 }
 
 /* Модальное окно */
@@ -565,7 +587,8 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -573,19 +596,20 @@ onMounted(() => {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
-  padding: 25px;
-  min-width: 600px;
-  max-width: 800px;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 1.5rem;
+  min-width: 500px;
+  max-width: 700px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
 }
 
 .small-modal {
-  min-width: 400px;
-  max-width: 450px;
+  min-width: 350px;
+  max-width: 400px;
   text-align: center;
 }
 
@@ -593,32 +617,43 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 2px solid #f9cffd;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f9cffd;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #999999;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
 }
 
+/* Форма */
 .form-row {
   display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .form-row .form-group {
@@ -627,118 +662,194 @@ onMounted(() => {
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #000000;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #2c3e2f;
 }
 
 .form-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #000000;
+  padding: 0.7rem 1rem;
+  border: 2px solid #f5f5f7;
+  border-radius: 40px;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  color: #2c3e2f;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #d9eb61;
+  box-shadow: 0 0 0 3px #d9eb6140;
 }
 
 textarea.form-input {
   resize: vertical;
-  font-family: inherit;
+  border-radius: 20px;
 }
 
+/* Кнопки модального окна */
 .modal-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
 }
 
 .cancel-btn, .confirm-btn {
-  padding: 8px 16px;
+  padding: 0.6rem 1.5rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
-  background-color: #e0e0e0;
-  color: #000000;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
 }
 
-.cancel-btn:hover, .confirm-btn:hover {
-  background-color: #cccccc;
+.cancel-btn {
+  background: #f5f5f7;
+  color: #4a5b4e;
+}
+
+.cancel-btn:hover {
+  background: #e8e8ec;
+  transform: translateY(-1px);
+}
+
+.confirm-btn {
+  background: #d9eb61;
+  color: #2c3e2f;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
+}
+
+.confirm-btn:hover {
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
 }
 
 .call-content, .sms-content {
   text-align: center;
-  padding: 20px;
-  color: #000000;
+  padding: 1.5rem;
+  color: #2c3e2f;
 }
 
 .call-note, .sms-note {
-  color: #666666;
-  font-size: 12px;
-  margin-top: 10px;
+  color: #999999;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
 }
 
+/* Фильтры */
+.filters-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid #f5f5f7;
+  border-radius: 40px;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #d9eb61;
+  box-shadow: 0 0 0 3px #d9eb6140;
+}
+
+.apply-btn {
+  padding: 0.7rem 1.8rem;
+  background: #d9eb61;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  color: #2c3e2f;
+  transition: all 0.3s ease;
+}
+
+.apply-btn:hover {
+  background: #c4db3a;
+  transform: translateY(-2px);
+}
+
+/* Ошибка */
 .error-message {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background-color: #f44336;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
+  background: #fef2f0;
+  color: #e85d4a;
+  padding: 0.8rem 1.2rem;
+  border-radius: 40px;
   display: flex;
-  gap: 10px;
+  gap: 0.8rem;
   align-items: center;
   z-index: 1001;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-left: 3px solid #e85d4a;
 }
 
 .error-message button {
   background: none;
   border: none;
-  color: white;
+  color: #e85d4a;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 1rem;
 }
 
 .text-center {
   text-align: center;
 }
 
-.logout-btn {
-  display: inline-block;
-  padding: 6px 16px;
-  background-color: #e0e0e0;
-  color: #000000;
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.3s;
-}
+/* Адаптив */
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    gap: 1rem;
+  }
 
-.logout-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
-}
+  .nav-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 
-.user-details {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
 
-.user-name {
-  font-weight: 600;
-  color: #000000;
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
 
-}
-
-.user-role {
-  font-weight: 600;
-  color: #000000;
+  .modal-content {
+    min-width: auto;
+  }
 }
 </style>

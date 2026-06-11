@@ -14,13 +14,13 @@
       >
         В работу
       </button>
-      <button
-        v-if="type === 'assembly'"
-        @click="$emit('status-change', order.id, 'ready')"
-        class="action-btn"
-      >
-        Начать сборку
-      </button>
+<!--      <button-->
+<!--        v-if="type === 'assembly'"-->
+<!--        @click="$emit('status-change', order.id, 'ready')"-->
+<!--        class="action-btn"-->
+<!--      >-->
+<!--        Начать сборку-->
+<!--      </button>-->
       <button
         v-if="type === 'ready'"
         @click="$emit('complete-order', order.id)"
@@ -28,6 +28,7 @@
       >
         Выдан
       </button>
+
       <button
         v-if="type === 'assembly'"
         @click="$emit('status-change', order.id, 'ready')"
@@ -35,6 +36,15 @@
       >
         Готово
       </button>
+
+      <button
+        v-if="canGoBack"
+        @click="$emit('go-back', order.id)"
+        class="action-btn back-btn"
+      >
+        Вернуть
+      </button>
+
       <button
         @click="$emit('view-details', order)"
         class="action-btn details-btn"
@@ -51,7 +61,14 @@ const props = defineProps({
   type: String // urgent, planned, assembly, ready, completed
 })
 
-const emit = defineEmits(['status-change', 'view-details'])
+const emit = defineEmits(['status-change', 'view-details', 'go-back'])
+
+import { computed } from 'vue'
+// Проверяем, можно ли вернуть заказ в предыдущий статус
+const canGoBack = computed(() => {
+  const backableStatuses = ['assembly', 'ready', 'completed']
+  return backableStatuses.includes(props.type)
+})
 
 const getOrderItemsText = () => {
   if (!props.order.items || props.order.items.length === 0) {
@@ -65,106 +82,169 @@ const getOrderItemsText = () => {
 }
 
 const getTimeText = () => {
+  const formatDate = (date) => date?.split('T')[0] || ''
+  const formatTime = (time) => time?.substring(0, 5) || ''
+
   if (props.order.delivery_date && props.order.delivery_time) {
-    return `${props.order.delivery_date} ${props.order.delivery_time}`
+    return `${formatDate(props.order.delivery_date)} ${formatTime(props.order.delivery_time)}`
   }
   if (props.order.delivery_date) {
-    return props.order.delivery_date
+    return formatDate(props.order.delivery_date)
   }
   if (props.order.assembly_date) {
-    return `Сборка: ${props.order.assembly_date}`
+    return `Сборка: ${formatDate(props.order.assembly_date)}`
   }
   return 'Дата не указана'
 }
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .order-card {
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 1px solid #f5f5f7;
+  font-family: 'Inter', sans-serif;
 }
 
 .order-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.2);
+  border-color: #d9eb61;
 }
 
 .order-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .order-number {
-  font-weight: bold;
-  font-size: 14px;
-  color: #000000;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #e07bc4;
+  background: #f9cffd20;
+  padding: 0.2rem 0.6rem;
+  border-radius: 30px;
 }
 
 .order-client {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
   color: #000000;
 }
 
 .order-items {
-  font-size: 12px;
+  font-size: 0.7rem;
   color: #666666;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .order-time {
-  font-size: 11px;
-  color: #666666;
-  margin-bottom: 10px;
+  font-size: 0.65rem;
+  color: #999999;
+  margin-bottom: 0.7rem;
 }
 
 .order-actions {
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .action-btn {
-  padding: 4px 8px;
+  padding: 0.3rem 0.8rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 30px;
   cursor: pointer;
-  font-size: 11px;
-  transition: all 0.3s;
-  background-color: #e0e0e0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
+}
+
+/* Кнопка В работу (для срочных заказов) */
+.action-btn {
+  background: #ffffff;
   color: #000000;
+  border: 2px solid #d9eb61;
 }
 
 .action-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
+  background: #d9eb61;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
 }
 
-.details-btn {
-  background-color: #e0e0e0;
+/* Кнопка Начать сборку / Готово */
+.action-btn.assemble-btn {
+  background: #ffffff;
+  border: 2px solid #f9cffd;
+  color: #8b3a8b;
+}
+
+.action-btn.assemble-btn:hover {
+  background: #f9cffd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(249, 207, 253, 0.3);
+}
+
+/* Кнопка Выдан */
+.action-btn.complete-btn {
+  background: #ffffff;
+  border: 2px solid #77b7d3;
+  color: #1a3a4a;
+}
+
+.action-btn.complete-btn:hover {
+  background: #77b7d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(119, 183, 211, 0.3);
+}
+
+/* Кнопка Подробнее */
+.action-btn.details-btn {
+  background: #f5f5f7;
+  border: none;
   color: #000000;
 }
 
-.details-btn:hover {
-  background-color: #cccccc;
+.action-btn.details-btn:hover {
+  background: #e8e8ec;
+  transform: translateY(-1px);
 }
 
-.complete-btn {
-  background-color: #e0e0e0;
-  color: white;
+/* Для кнопок без специфичного класса */
+.action-btn:not(.assemble-btn):not(.complete-btn):not(.details-btn) {
+  background: #ffffff;
+  border: 2px solid #d9eb61;
+  color: #000000;
 }
 
-.complete-btn:hover {
-  background-color: #e0e0e0;
+.action-btn:not(.assemble-btn):not(.complete-btn):not(.details-btn):hover {
+  background: #d9eb61;
 }
+
+.back-btn {
+  background: #ffffff;
+  border: 2px solid #ff9800;
+  color: #e65100;
+}
+
+.back-btn:hover {
+  background: #ff9800;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
+}
+
 </style>

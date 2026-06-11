@@ -3,7 +3,7 @@
     <div class="modal-content details-modal" @click.stop>
       <div class="modal-header">
         <h3>Заказ #{{ order?.id }} - {{ getClientName() }}</h3>
-        <button class="close-btn" @click="close">X</button>
+        <button class="close-btn" @click="close">✕</button>
       </div>
 
       <div class="modal-body">
@@ -44,10 +44,6 @@
               <span class="info-value status-badge" :class="order?.status">
                 {{ getStatusText(order?.status) }}
               </span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Сотрудник:</span>
-              <span class="info-value">{{ getEmployeeName() }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Тип заказа:</span>
@@ -316,6 +312,8 @@ const close = () => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -323,6 +321,7 @@ const close = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -330,12 +329,33 @@ const close = () => {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 28px;
   max-width: 700px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Скроллбар */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #aaaaaa;
 }
 
 .details-modal {
@@ -347,100 +367,142 @@ const close = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #f9cffd;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #000000;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f9cffd;
+  letter-spacing: -0.3px;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #999999;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: #000000;
+  color: #f9cffd;
+  background: #f9cffd20;
+  transform: scale(1.05);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 1.5rem;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 15px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  gap: 0.8rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5f5f7;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
 }
 
+/* Секции информации */
 .info-section {
-  margin-bottom: 25px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #f5f5f7;
+  border-radius: 20px;
   overflow: hidden;
 }
 
 .section-title {
-  background: #f0f0f0;
-  padding: 10px 15px;
-  font-weight: bold;
-  font-size: 14px;
-  border-bottom: 1px solid #e0e0e0;
-  color: #000000;
+  background: #f9cffd30;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #f5f5f7;
+  color: #2c3e2f;
 }
 
 .info-grid {
-  padding: 15px;
+  padding: 1rem;
 }
 
 .info-row {
   display: flex;
-  margin-bottom: 10px;
-  font-size: 14px;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
 }
 
 .info-label {
   width: 140px;
-  font-weight: bold;
-  color: #666666;
+  font-weight: 600;
+  color: #4a5b4e;
 }
 
 .info-value {
   flex: 1;
-  color: #000000;
+  color: #2c3e2f;
 }
 
 .info-value.total {
-  font-size: 16px;
-  font-weight: bold;
-  color: #000000;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2c3e2f;
 }
 
+/* Статус бейдж */
 .status-badge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #000000;
+  padding: 0.2rem 0.7rem;
+  border-radius: 30px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #f5f5f7;
+  color: #4a5b4e;
 }
 
-.status-badge.new,
-.status-badge.assembly,
-.status-badge.ready,
-.status-badge.completed,
+.status-badge.new {
+  background: #f9cffd;
+  color: #8b3a8b;
+}
+
+.status-badge.assembly {
+  background: #d9eb61;
+  color: #2c5e2c;
+}
+
+.status-badge.ready {
+  background: #77b7d3;
+  color: #1a3a4a;
+}
+
+.status-badge.completed {
+  background: #fffded;
+  color: #d4a500;
+
+}
+
 .status-badge.cancelled {
-  background: #e0e0e0;
+  background: #e85d4a;
+  color: #ffffff;
 }
 
+/* Таблица товаров */
 .items-table {
   width: 100%;
   border-collapse: collapse;
@@ -448,65 +510,112 @@ const close = () => {
 
 .items-table th,
 .items-table td {
-  padding: 10px 15px;
+  padding: 0.7rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-  color: #000000;
+  border-bottom: 1px solid #f0f0f0;
+  color: #2c3e2f;
+  font-size: 0.85rem;
 }
 
 .items-table th {
-  background: #f0f0f0;
-  font-weight: bold;
-  font-size: 13px;
-  color: #000000;
+  background: #f9f9fb;
+  font-weight: 600;
+  color: #4a5b4e;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .total-row {
-  background: #f0f0f0;
+  background: #f9f9fb;
 }
 
 .total-label {
   text-align: right;
-  font-weight: bold;
-  color: #000000;
+  font-weight: 700;
+  color: #2c3e2f;
 }
 
 .total-value {
-  font-weight: bold;
-  color: #000000;
-  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e2f;
+  font-size: 1rem;
 }
 
+/* Кнопка действия статуса */
 .action-status-btn {
-  padding: 8px 20px;
+  padding: 0.6rem 1.5rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-  background-color: #e0e0e0;
-  color: #000000;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
 }
 
-.action-status-btn:hover {
-  background-color: #cccccc;
-  transform: scale(1.05);
+.action-status-btn.work-btn {
+  background: #d9eb61;
+  color: #2c3e2f;
+  box-shadow: 0 2px 6px rgba(217, 235, 97, 0.3);
 }
 
+.action-status-btn.work-btn:hover {
+  background: #c4db3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 235, 97, 0.4);
+}
+
+.action-status-btn.assemble-btn {
+  background: #f9cffd;
+  color: #8b3a8b;
+  box-shadow: 0 2px 6px rgba(249, 207, 253, 0.3);
+}
+
+.action-status-btn.assemble-btn:hover {
+  background: #f0c4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 207, 253, 0.4);
+}
+
+.action-status-btn.complete-btn {
+  background: #77b7d3;
+  color: #1a3a4a;
+  box-shadow: 0 2px 6px rgba(119, 183, 211, 0.3);
+}
+
+.action-status-btn.complete-btn:hover {
+  background: #5a9ec0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(119, 183, 211, 0.4);
+}
+
+.action-status-btn.default-btn {
+  background: #f5f5f7;
+  color: #4a5b4e;
+}
+
+.action-status-btn.default-btn:hover {
+  background: #e8e8ec;
+  transform: translateY(-2px);
+}
+
+/* Кнопка закрытия */
 .close-modal-btn {
-  padding: 8px 20px;
-  background-color: #e0e0e0;
+  padding: 0.6rem 1.5rem;
+  background: #f5f5f7;
   border: none;
-  border-radius: 6px;
+  border-radius: 40px;
   cursor: pointer;
-  font-size: 14px;
-  color: #000000;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  color: #4a5b4e;
+  transition: all 0.3s ease;
 }
 
 .close-modal-btn:hover {
-  background-color: #cccccc;
+  background: #e8e8ec;
+  transform: translateY(-1px);
 }
-
-
-
 </style>
