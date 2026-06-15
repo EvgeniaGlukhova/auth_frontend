@@ -22,7 +22,7 @@
           <table class="employees-table">
             <thead>
             <tr>
-              <th>ID</th>
+<!--              <th>ID</th>-->
               <th>ФИО</th>
               <th>Должность</th>
               <th>Телефон</th>
@@ -38,7 +38,7 @@
               <td colspan="6" class="text-center">Нет сотрудников</td>
             </tr>
             <tr v-else v-for="employee in employees" :key="employee.id">
-              <td>{{ employee.id }}</td>
+<!--              <td>{{ employee.id }}</td>-->
               <td>{{ getFullName(employee) }}</td>
               <td>{{ getRoleName(employee.role_id) }}</td>
               <td>{{ employee.phone || '—' }}</td>
@@ -104,6 +104,9 @@
               <option :value="1">Администратор</option>
               <option :value="2">Флорист</option>
               <option :value="3">Продавец</option>
+              <option :value="4">Продавец-флорист</option>
+              <option :value="5">Курьер</option>
+
             </select>
           </div>
 
@@ -143,34 +146,34 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useDataStore } from '../../stores/dataStore'
-
 import { useAuthStore } from '../../stores/authStore'
+import { exportEmployees } from '../../utils/excelExport'
 
 const authStore = useAuthStore()
-
 const dataStore = useDataStore()
 
-// Состояния
+// константы
+const getRoleNames = () => ({
+  1: 'Администратор',
+  2: 'Флорист',
+  3: 'Продавец',
+  4: 'Продавец-флорист',
+  5: 'Курьер'
+})
+
+// состояние
 const showAddEditModal = ref(false)
 const isEditing = ref(false)
 const employees = ref([])
 const accessError = ref('')
 
-// Проверка прав текущего пользователя - используем authStore
+
 const isAdmin = computed(() => {
   return authStore.user?.role === 'administrator' || authStore.user?.role_id === 1
 })
 
-// Роли
-const roleNames = {
-  1: 'Администратор',
-  2: 'Флорист',
-  3: 'Продавец',
-  4: 'Продавец-флорист'
-}
-
-// Форма для добавления/редактирования
-const formData = ref({
+// начальные данные
+const getEmptyForm = () => ({
   id: null,
   surname: '',
   name: '',
@@ -181,32 +184,29 @@ const formData = ref({
   password: ''
 })
 
+const formData = ref(getEmptyForm())
 
-// Загрузка сотрудников из хранилища
-const loadEmployees = async () => {
-
-  accessError.value = ''
-  await dataStore.get_users()
-  employees.value = [...dataStore.users]
-
-  console.log('Загружено сотрудников:', employees.value.length)
-}
-
-// Загрузка при монтировании
-onMounted(() => {
-  loadEmployees()
-})
-
-
-// Получить полное имя
+// методы
 const getFullName = (employee) => {
   const parts = [employee.surname, employee.name, employee.patronymic].filter(p => p)
   return parts.join(' ') || '—'
 }
 
-// Получить название должности
 const getRoleName = (roleId) => {
-  return roleNames[roleId] || 'Не указана'
+  return getRoleNames()[roleId] || 'Не указана'
+}
+
+// Загрузка сотрудников
+const loadEmployees = async () => {
+  accessError.value = ''
+  await dataStore.get_users()
+  employees.value = [...dataStore.users]
+  console.log('Загружено сотрудников:', employees.value.length)
+}
+
+// Сброс формы
+const resetForm = () => {
+  formData.value = getEmptyForm()
 }
 
 // Открыть модалку добавления
@@ -216,16 +216,7 @@ const openAddModal = () => {
     return
   }
   isEditing.value = false
-  formData.value = {
-    id: null,
-    surname: '',
-    name: '',
-    patronymic: '',
-    role_id: null,
-    phone: '',
-    email: '',
-    password: ''
-  }
+  resetForm()
   showAddEditModal.value = true
 }
 
@@ -249,37 +240,31 @@ const editEmployee = (employee) => {
   showAddEditModal.value = true
 }
 
-// Закрыть модалку добавления/редактирования
+// Закрыть модалку
 const closeAddEditModal = () => {
   showAddEditModal.value = false
-  formData.value = {
-    id: null,
-    surname: '',
-    name: '',
-    patronymic: '',
-    role_id: null,
-    phone: '',
-    email: '',
-    password: ''
-  }
+  resetForm()
 }
 
-// Сохранить сотрудника
-const saveEmployee = async () => {
-  // Валидация
+// Валидация формы
+const isValid = () => {
   if (!formData.value.surname || !formData.value.name) {
     alert('Заполните фамилию и имя')
-    return
+    return false
   }
   if (!formData.value.email) {
     alert('Введите email')
-    return
+    return false
   }
   if (!isEditing.value && !formData.value.password) {
     alert('Введите пароль')
-    return
+    return false
   }
+  return true
+}
 
+// Подготовка данных для отправки
+const prepareEmployeeData = () => {
   const data = {
     surname: formData.value.surname,
     name: formData.value.name,
@@ -293,6 +278,15 @@ const saveEmployee = async () => {
     data.password = formData.value.password
   }
 
+  return data
+}
+
+// Сохранить сотрудника
+const saveEmployee = async () => {
+  if (!isValid()) return
+
+  const data = prepareEmployeeData()
+
   try {
     if (isEditing.value) {
       await dataStore.update_user(formData.value.id, data)
@@ -305,7 +299,6 @@ const saveEmployee = async () => {
     await loadEmployees()
   } catch (error) {
     console.error('Ошибка сохранения:', error)
-    // Показываем сообщение об ошибке от сервера
     if (error.response?.data?.message) {
       alert(error.response.data.message)
     } else if (dataStore.errorMessage) {
@@ -323,34 +316,33 @@ const deleteEmployee = async (employee) => {
     return
   }
 
-  if (confirm(`Удалить сотрудника "${getFullName(employee)}"?`)) {
-    try {
-      await dataStore.delete_user(employee.id)
-      alert('Сотрудник удален')
-      await loadEmployees()
-    } catch (error) {
-      console.error('Ошибка удаления:', error)
-      if (error.response?.data?.message) {
-        alert(error.response.data.message)
-      } else if (dataStore.errorMessage) {
-        alert(dataStore.errorMessage)
-      } else {
-        alert('Ошибка при удалении')
-      }
+  if (!confirm(`Удалить сотрудника "${getFullName(employee)}"?`)) return
+
+  try {
+    await dataStore.delete_user(employee.id)
+    alert('Сотрудник удален')
+    await loadEmployees()
+  } catch (error) {
+    console.error('Ошибка удаления:', error)
+    if (error.response?.data?.message) {
+      alert(error.response.data.message)
+    } else if (dataStore.errorMessage) {
+      alert(dataStore.errorMessage)
+    } else {
+      alert('Ошибка при удалении')
     }
   }
 }
 
-// Загрузка при монтировании
-onMounted(() => {
-  loadEmployees()
-})
-
-import { exportEmployees } from '../../utils/excelExport'
-
+// Экспорт в Excel
 const exportEmployeesToExcel = () => {
   exportEmployees(employees.value)
 }
+
+
+onMounted(() => {
+  loadEmployees()
+})
 </script>
 
 <style scoped>

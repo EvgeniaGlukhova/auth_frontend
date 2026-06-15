@@ -58,7 +58,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-const localForm = reactive({
+// начальные данные
+const getInitialForm = () => ({
   id: null,
   name: '',
   price: '',
@@ -66,12 +67,19 @@ const localForm = reactive({
   supplier_id: null
 })
 
+const localForm = reactive(getInitialForm())
+
+
 watch(() => props.formData, (newVal) => {
-  localForm.id = newVal.id
-  localForm.name = newVal.name
-  localForm.price = newVal.price
-  localForm.quantity = newVal.quantity || 0
-  localForm.supplier_id = newVal.supplier_id || null
+  if (!newVal) return
+
+  Object.assign(localForm, {
+    id: newVal.id,
+    name: newVal.name || '',
+    price: newVal.price || '',
+    quantity: newVal.quantity || 0,
+    supplier_id: newVal.supplier_id || null
+  })
 }, { immediate: true, deep: true })
 
 const handleSave = () => {

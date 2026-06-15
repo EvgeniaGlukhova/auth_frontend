@@ -1,46 +1,24 @@
 <template>
   <div class="customers-page">
-    <!-- Верхняя панель с навигацией -->
-    <div class="top-bar">
-      <h1>Sunshine</h1>
-      <div class="nav-tabs">
-        <router-link to="/dashboard" class="nav-link">Главная</router-link>
-        <router-link to="/warehouse" class="nav-link">Склад</router-link>
-        <router-link to="/customers" class="nav-link active">Клиенты</router-link>
-        <router-link to="/orders" class="nav-link">Заказы</router-link>
-        <router-link to="/analytics" class="nav-link">Аналитика</router-link>
-      </div>
-      <div class="search-profile">
-        <div class="user-details">
-          <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
-          <span class="user-role">{{ getRoleName() }}</span>
-        </div>
-<!--        <router-link to="/dashboard" class="logout-btn">Выйти</router-link>-->
-      </div>
-    </div>
+    <Header />
 
-    <!-- Заголовок раздела -->
     <h2 class="section-title">Клиенты</h2>
 
-    <!-- Кнопки действий -->
     <div class="action-buttons">
       <button @click="openAddModal" class="btn-action">Добавить клиента</button>
-<!--      <button @click="openCallModal" class="btn-action">Позвонить</button>-->
-<!--      <button @click="openSmsModal" class="btn-action">SMS</button>-->
     </div>
 
     <div class="filters-bar">
       <input
         type="text"
         v-model="searchQuery"
-        placeholder="Поиск по названию..."
+        placeholder="Поиск по имени или телефону..."
         class="search-input"
         @keyup.enter="applySearch"
       >
       <button @click="applySearch" class="apply-btn">Применить</button>
     </div>
 
-    <!-- Таблица клиентов -->
     <div class="table-container">
       <table class="customers-table">
         <thead>
@@ -75,102 +53,14 @@
       </table>
     </div>
 
-    <!-- Модальное окно добавления/редактирования клиента -->
-    <div v-if="showClientModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>{{ isEditing ? 'Редактирование клиента' : 'Добавление нового клиента' }}</h3>
-          <button class="close-btn" @click="closeModal">✕</button>
-        </div>
+    <AddClientModal
+      :show="showClientModal"
+      :is-editing="isEditing"
+      :client-data="formData"
+      @close="closeModal"
+      @save="saveClient"
+    />
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Фамилия:</label>
-            <input v-model="formData.surname" type="text" class="form-input" placeholder="Иванова">
-          </div>
-
-          <div class="form-group">
-            <label>Имя:</label>
-            <input v-model="formData.name" type="text" class="form-input" placeholder="Анна">
-          </div>
-
-          <div class="form-group">
-            <label>Отчество:</label>
-            <input v-model="formData.patronymic" type="text" class="form-input" placeholder="Петровна">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Телефон:</label>
-            <input v-model="formData.phone" type="text" class="form-input" placeholder="+7 999 123-45-67">
-          </div>
-
-          <div class="form-group">
-            <label>Email:</label>
-            <input v-model="formData.email" type="email" class="form-input" placeholder="anna@mail.ru">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Адрес:</label>
-          <input v-model="formData.address" type="text" class="form-input" placeholder="г. Сургут, ул. Ленина, д. 1, кв. 10">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Дата рождения:</label>
-            <input v-model="formData.birth_date" type="date" class="form-input">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Комментарий:</label>
-          <textarea v-model="formData.comments" class="form-input" rows="3" placeholder="Предпочитает розы, аллергия на лилии"></textarea>
-        </div>
-
-        <div class="modal-buttons">
-          <button @click="closeModal" class="cancel-btn">Отмена</button>
-          <button @click="saveClient" class="confirm-btn">Сохранить</button>
-        </div>
-      </div>
-    </div>
-
-<!--    &lt;!&ndash; Модальное окно звонка (заглушка) &ndash;&gt;-->
-<!--    <div v-if="showCallModal" class="modal-overlay" @click="showCallModal = false">-->
-<!--      <div class="modal-content small-modal" @click.stop>-->
-<!--        <div class="modal-header">-->
-<!--          <h3>Позвонить клиенту</h3>-->
-<!--          <button class="close-btn" @click="showCallModal = false">✕</button>-->
-<!--        </div>-->
-<!--        <div class="call-content">-->
-<!--          <p>Функция звонка в разработке</p>-->
-<!--          <p class="call-note">Вы сможете звонить клиентам через IP-телефонию</p>-->
-<!--        </div>-->
-<!--        <div class="modal-buttons">-->
-<!--          <button @click="showCallModal = false" class="confirm-btn">Закрыть</button>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </div>-->
-
-<!--    &lt;!&ndash; Модальное окно SMS (заглушка) &ndash;&gt;-->
-<!--    <div v-if="showSmsModal" class="modal-overlay" @click="showSmsModal = false">-->
-<!--      <div class="modal-content small-modal" @click.stop>-->
-<!--        <div class="modal-header">-->
-<!--          <h3>Отправить SMS</h3>-->
-<!--          <button class="close-btn" @click="showSmsModal = false">✕</button>-->
-<!--        </div>-->
-<!--        <div class="sms-content">-->
-<!--          <p>Функция SMS-рассылки в разработке</p>-->
-<!--          <p class="sms-note">Вы сможете отправлять SMS клиентам</p>-->
-<!--        </div>-->
-<!--        <div class="modal-buttons">-->
-<!--          <button @click="showSmsModal = false" class="confirm-btn">Закрыть</button>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </div>-->
-
-    <!-- Сообщение об ошибке -->
     <div v-if="dataStore.errorMessage" class="error-message">
       {{ dataStore.errorMessage }}
       <button @click="dataStore.errorMessage = ''">✕</button>
@@ -182,31 +72,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore'
 import { useAuthStore } from '@/stores/authStore.js'
+import Header from '../components/Header.vue'
+import AddClientModal from '../components/customers/AddClientModal.vue'
 
 const dataStore = useDataStore()
-
-// Состояние
-const searchQuery = ref('')
-const filterType = ref('all')
-const showClientModal = ref(false)
-const showCallModal = ref(false)
-const showSmsModal = ref(false)
-const isEditing = ref(false)
-
 const authStore = useAuthStore()
 
-const getRoleName = () => {
-  const role = authStore.user?.role
-  const roles = {
-    'administrator': 'Администратор',
-    'florist': 'Флорист',
-    'seller': 'Продавец',
-    'seller - florist': 'Продавец-флорист'
-  }
-  return roles[role] || role || 'Сотрудник'
-}
-
-// Форма
+//  Состояние
+const searchQuery = ref('')
+const showClientModal = ref(false)
+const isEditing = ref(false)
 const formData = ref({
   id: null,
   name: '',
@@ -219,40 +94,24 @@ const formData = ref({
   comments: ''
 })
 
-// Список клиентов
+
 const clientsList = computed(() => {
-  let clients = dataStore.clients || []
-
-  if (filterType.value === 'has_orders') {
-    clients = clients.filter(c => c.orders_count > 0)
-  } else if (filterType.value === 'no_orders') {
-    clients = clients.filter(c => !c.orders_count || c.orders_count === 0)
-  }
-
-  return clients
+  return dataStore.clients || []
 })
 
-// Полное имя
+//  Методы
 const getFullName = (client) => {
   return `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.trim()
 }
 
-// Загрузка данных
 const loadData = async () => {
-  console.log('loadData, searchQuery:', searchQuery.value)
   await dataStore.get_clients(searchQuery.value)
 }
 
-// Применить поиск
 const applySearch = async () => {
-  console.log('applySearch, searchQuery:', searchQuery.value)
-  console.log('Поиск:', searchQuery.value)
   await loadData()
-  console.log('После загрузки, клиентов:', dataStore.clients?.length)
 }
 
-
-// Открыть модалку добавления
 const openAddModal = () => {
   isEditing.value = false
   formData.value = {
@@ -269,17 +128,6 @@ const openAddModal = () => {
   showClientModal.value = true
 }
 
-// // Открыть модалку звонка
-// const openCallModal = () => {
-//   showCallModal.value = true
-// }
-//
-// // Открыть модалку SMS
-// const openSmsModal = () => {
-//   showSmsModal.value = true
-// }
-
-// Редактировать клиента
 const editClient = (client) => {
   isEditing.value = true
   formData.value = {
@@ -296,64 +144,38 @@ const editClient = (client) => {
   showClientModal.value = true
 }
 
-// Сохранить клиента
-const saveClient = async () => {
-  if (!formData.value.surname || !formData.value.name) {
-    alert('Заполните обязательные поля (Фамилия и Имя)')
-    return
-  }
+const closeModal = () => {
+  showClientModal.value = false
+}
 
-  const data = {
-    surname: formData.value.surname,
-    name: formData.value.name,
-    patronymic: formData.value.patronymic,
-    email: formData.value.email,
-    phone: formData.value.phone,
-    address: formData.value.address,
-    birth_date: formData.value.birth_date,
-    comments: formData.value.comments
-  }
-
+const saveClient = async (data) => {
   try {
     if (isEditing.value) {
-      await dataStore.update_client(formData.value.id, data)
+      await dataStore.update_client(data.id, data)
     } else {
       await dataStore.create_client(data)
     }
     closeModal()
     await loadData()
+    alert(isEditing.value ? 'Клиент обновлён' : 'Клиент добавлен')
   } catch (error) {
     console.error('Ошибка сохранения:', error)
+    alert('Ошибка при сохранении')
   }
 }
 
-// Удалить клиента
 const deleteClient = async (client) => {
-  if (confirm(`Удалить клиента "${getFullName(client)}"?`)) {
-    try {
-      await dataStore.delete_client(client.id)
-      await loadData()
-    } catch (error) {
-      console.error('Ошибка удаления:', error)
-    }
+  if (!confirm(`Удалить клиента "${getFullName(client)}"?`)) return
+
+  try {
+    await dataStore.delete_client(client.id)
+    await loadData()
+  } catch (error) {
+    console.error('Ошибка удаления:', error)
+    alert('Ошибка при удалении')
   }
 }
 
-// Закрыть модалку
-const closeModal = () => {
-  showClientModal.value = false
-  formData.value = {
-    id: null,
-    name: '',
-    patronymic: '',
-    surname: '',
-    email: '',
-    phone: '',
-    address: '',
-    birth_date: '',
-    comments: ''
-  }
-}
 
 onMounted(() => {
   loadData()
@@ -372,15 +194,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* Верхняя панель */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f9cffd;
-}
 
 .top-bar h1 {
   margin: 0;
@@ -388,84 +201,6 @@ onMounted(() => {
   font-weight: 700;
   color: #f9cffd;
   letter-spacing: -0.5px;
-}
-
-/* Навигация */
-.nav-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: #f5f5f7;
-  padding: 0.3rem;
-  border-radius: 60px;
-}
-
-.nav-link {
-  padding: 0.6rem 1.5rem;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5b4e;
-  border-radius: 40px;
-  transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.nav-link:hover {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-  transform: translateY(-2px);
-}
-
-.nav-link.active {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-}
-
-/* Профиль */
-.search-profile {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.user-name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #2c3e2f;
-  background: #f9cffd30;
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.user-role {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: #000000;
-}
-
-.logout-btn {
-  padding: 0.5rem 1.2rem;
-  background: #d9eb61;
-  text-decoration: none;
-  border-radius: 40px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e2f;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #c4db3a;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px #d9eb6180;
 }
 
 /* Заголовок раздела */

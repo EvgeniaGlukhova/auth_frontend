@@ -122,28 +122,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../../stores/dataStore'
 import { useAuthStore } from '../../stores/authStore'
+import { exportSchedule } from '../../utils/excelExport'
 
 const emit = defineEmits(['close'])
 const dataStore = useDataStore()
 const authStore = useAuthStore()
 
-// Состояния
-const employees = ref([])
-const schedules = ref([])
-const currentDate = ref(new Date())
-const editingCell = ref(null)
-const popupPosition = ref({ top: 0, left: 0 })
-const isEditMode = ref(false)
 
-// Временные изменения
-const tempChanges = ref({})
+const monthNames = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+]
 
-// Проверка прав (только администратор может редактировать)
-const isAdmin = computed(() => {
-  return authStore.user?.role === 'administrator' || authStore.user?.role_id === 1
-})
+const roleNames = {
+  1: 'Администратор',
+  2: 'Флорист',
+  3: 'Продавец',
+  4: 'Продавец-флорист',
+  5: 'Курьер'
+}
 
-// Опции времени для смен
 const timeOptions = [
   { value: null, label: 'Выходной' },
   { value: '09:00-18:00', label: '09:00 - 18:00' },
@@ -151,31 +149,36 @@ const timeOptions = [
   { value: '12:00-20:00', label: '12:00 - 20:00' }
 ]
 
-// Названия месяцев
-const monthNames = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-]
+// ==================== СОСТОЯНИЕ ====================
+const employees = ref([])
+const schedules = ref([])
+const currentDate = ref(new Date())
+const editingCell = ref(null)
+const popupPosition = ref({ top: 0, left: 0 })
+const isEditMode = ref(false)
+const tempChanges = ref({})
 
-// Текущий месяц и год
+
+const isAdmin = computed(() => {
+  return authStore.user?.role === 'administrator' || authStore.user?.role_id === 1
+})
+
 const currentYear = computed(() => currentDate.value.getFullYear())
 const currentMonth = computed(() => currentDate.value.getMonth())
 const monthName = computed(() => monthNames[currentMonth.value])
 
-// Предыдущий и следующий месяц
 const prevMonthName = computed(() => {
-  let prev = new Date(currentDate.value)
+  const prev = new Date(currentDate.value)
   prev.setMonth(prev.getMonth() - 1)
   return monthNames[prev.getMonth()]
 })
 
 const nextMonthName = computed(() => {
-  let next = new Date(currentDate.value)
+  const next = new Date(currentDate.value)
   next.setMonth(next.getMonth() + 1)
   return monthNames[next.getMonth()]
 })
 
-// Видимые дни (с 1 по 15 число)
 const visibleDays = computed(() => {
   const year = currentYear.value
   const month = currentMonth.value
@@ -194,102 +197,117 @@ const visibleDays = computed(() => {
   return days
 })
 
-// Роли
-const roleNames = {
-  1: 'Администратор',
-  2: 'Флорист',
-  3: 'Продавец'
-}
-
-// Нормализация даты
+// доп функции
 const normalizeDate = (dateStr) => {
   if (!dateStr) return null
   return dateStr.split('T')[0]
 }
 
-// Закрытие модального окна
-const closeModal = () => {
-  emit('close')
+const getFullName = (employee) => {
+  const parts = [employee.surname, employee.name, employee.patronymic].filter(p => p)
+  return parts.join(' ') || employee.email || 'Без имени'
 }
 
-// Загрузка данных
-const loadData = async () => {
-  await dataStore.get_users()
-  employees.value = dataStore.users || []
-  await loadSchedules()
+const getRoleName = (roleId) => {
+  return roleNames[roleId] || 'Сотрудник'
 }
 
-// Загрузка расписаний
+const formatDate = (date) => {
+  const d = new Date(date)
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+}
+
+const getChangeKey = (employeeId, date) => `${employeeId}_${date}`
+
+// работа с данными
 const loadSchedules = async () => {
   await dataStore.get_schedules()
   schedules.value = [...(dataStore.schedules || [])]
   tempChanges.value = {}
 }
 
-// Получить полное имя
-const getFullName = (employee) => {
-  const parts = [employee.surname, employee.name, employee.patronymic].filter(p => p)
-  return parts.join(' ') || employee.email || 'Без имени'
+const loadData = async () => {
+  await dataStore.get_users()
+  employees.value = dataStore.users || []
+  await loadSchedules()
 }
 
-// Получить название должности
-const getRoleName = (roleId) => {
-  return roleNames[roleId] || 'Сотрудник'
-}
-
-// Получить ключ для временных изменений
-const getChangeKey = (employeeId, date) => {
-  return `${employeeId}_${date}`
-}
-
-// Получить текст для ячейки (оригинал)
-const getScheduleText = (employeeId, date) => {
-  const schedule = schedules.value.find(s =>
+const getSchedule = (employeeId, date) => {
+  return schedules.value.find(s =>
     s.user_id === employeeId && normalizeDate(s.date) === date
   )
-  if (!schedule) return 'Выходной'
-  if (schedule.weekend) return 'Выходной'
+}
+
+const getScheduleText = (employeeId, date) => {
+  const schedule = getSchedule(employeeId, date)
+  if (!schedule || schedule.weekend) return 'Выходной'
   if (schedule.start_time && schedule.end_time) {
     return `${schedule.start_time.substring(0, 5)}-${schedule.end_time.substring(0, 5)}`
   }
   return 'Выходной'
 }
 
-// Получить текст для отображения (с учетом временных изменений)
 const getDisplayText = (employeeId, date) => {
   const key = getChangeKey(employeeId, date)
   if (tempChanges.value[key] !== undefined) {
-    const value = tempChanges.value[key]
-    if (value === null) return 'Выходной'
-    return value
+    return tempChanges.value[key] === null ? 'Выходной' : tempChanges.value[key]
   }
   return getScheduleText(employeeId, date)
 }
 
-// Получить значение для временного изменения
 const getTempScheduleValue = (employeeId, date) => {
   const key = getChangeKey(employeeId, date)
   if (tempChanges.value[key] !== undefined) {
     return tempChanges.value[key]
   }
-  const schedule = schedules.value.find(s =>
-    s.user_id === employeeId && normalizeDate(s.date) === date
-  )
+  const schedule = getSchedule(employeeId, date)
   if (!schedule || schedule.weekend || !schedule.start_time) return null
   return `${schedule.start_time.substring(0, 5)}-${schedule.end_time.substring(0, 5)}`
 }
 
-// Проверить, есть ли изменения
 const hasChanges = (employeeId, date) => {
-  const key = getChangeKey(employeeId, date)
-  return tempChanges.value[key] !== undefined
+  return tempChanges.value[getChangeKey(employeeId, date)] !== undefined
 }
 
-// Войти в режим редактирования (только для админа)
+// редактирование
 const enterEditMode = () => {
   if (!isAdmin.value) return
   isEditMode.value = true
   tempChanges.value = {}
+}
+
+const cancelEdit = () => {
+  isEditMode.value = false
+  tempChanges.value = {}
+  editingCell.value = null
+}
+
+const openEditCell = (employee, day, event) => {
+  if (!isAdmin.value) return
+  editingCell.value = {
+    employeeId: employee.id,
+    employeeName: getFullName(employee),
+    day: day
+  }
+
+  if (event) {
+    popupPosition.value = {
+      top: event.clientY + 10,
+      left: event.clientX + 10
+    }
+  }
+}
+
+const closeEditCell = () => {
+  editingCell.value = null
+}
+
+const updateTempSchedule = (value) => {
+  if (!editingCell.value) return
+  const { employeeId, day } = editingCell.value
+  const key = getChangeKey(employeeId, day.date)
+  tempChanges.value[key] = value
+  closeEditCell()
 }
 
 // Сохранить все изменения
@@ -299,9 +317,7 @@ const saveAllChanges = async () => {
   try {
     for (const [key, value] of Object.entries(tempChanges.value)) {
       const [employeeId, date] = key.split('_')
-      const existingSchedule = schedules.value.find(s =>
-        s.user_id === parseInt(employeeId) && normalizeDate(s.date) === date
-      )
+      const existingSchedule = getSchedule(parseInt(employeeId), date)
 
       let scheduleData
       if (value === null) {
@@ -339,81 +355,43 @@ const saveAllChanges = async () => {
   }
 }
 
-// Отменить редактирование
-const cancelEdit = () => {
+// навигация
+const resetAndLoad = async () => {
   isEditMode.value = false
   tempChanges.value = {}
-  editingCell.value = null
+  await loadSchedules()
 }
 
-// Обновить временное расписание
-const updateTempSchedule = (value) => {
-  if (!editingCell.value) return
-  const { employeeId, day } = editingCell.value
-  const key = getChangeKey(employeeId, day.date)
-  tempChanges.value[key] = value
-  closeEditCell()
-}
-
-// Открыть редактирование ячейки
-const openEditCell = (employee, day, event) => {
-  if (!isAdmin.value) return
-  editingCell.value = {
-    employeeId: employee.id,
-    employeeName: getFullName(employee),
-    day: day
-  }
-
-  if (event) {
-    popupPosition.value = {
-      top: event.clientY + 10,
-      left: event.clientX + 10
-    }
-  }
-}
-
-// Закрыть редактирование
-const closeEditCell = () => {
-  editingCell.value = null
-}
-
-// Форматировать дату
-const formatDate = (date) => {
-  const d = new Date(date)
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-}
-
-// Навигация по месяцам
-const prevMonth = () => {
+const prevMonth = async () => {
   if (isEditMode.value && !confirm('Переключение месяца отменит все изменения. Продолжить?')) return
   const newDate = new Date(currentDate.value)
   newDate.setMonth(newDate.getMonth() - 1)
   currentDate.value = newDate
-  isEditMode.value = false
-  tempChanges.value = {}
-  loadSchedules()
+  await resetAndLoad()
 }
 
-const nextMonth = () => {
+const nextMonth = async () => {
   if (isEditMode.value && !confirm('Переключение месяца отменит все изменения. Продолжить?')) return
   const newDate = new Date(currentDate.value)
   newDate.setMonth(newDate.getMonth() + 1)
   currentDate.value = newDate
-  isEditMode.value = false
-  tempChanges.value = {}
-  loadSchedules()
+  await resetAndLoad()
 }
 
-// Загрузка при монтировании
-onMounted(() => {
-  loadData()
-})
-
-import { exportSchedule } from '../../utils/excelExport'
-
+// экспорт
 const exportScheduleToExcel = () => {
   exportSchedule(employees.value, schedules.value, monthName.value)
 }
+
+
+const closeModal = () => {
+  emit('close')
+}
+
+
+onMounted(() => {
+  loadData()
+})
 </script>
 
 <style scoped>

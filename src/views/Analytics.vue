@@ -1,23 +1,6 @@
 <template>
   <div class="analytics-page">
-    <!-- Верхняя панель с навигацией -->
-    <div class="top-bar">
-      <h1>Sunshine</h1>
-      <div class="nav-tabs">
-        <router-link to="/dashboard" class="nav-link">Главная</router-link>
-        <router-link to="/warehouse" class="nav-link">Склад</router-link>
-        <router-link to="/customers" class="nav-link">Клиенты</router-link>
-        <router-link to="/orders" class="nav-link">Заказы</router-link>
-        <router-link to="/analytics" class="nav-link active">Аналитика</router-link>
-      </div>
-      <div class="profile-section">
-        <div class="user-details">
-          <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
-          <span class="user-role">{{ getRoleName() }}</span>
-        </div>
-<!--        <button @click="goToDashboard" class="logout-btn">Выйти</button>-->
-      </div>
-    </div>
+    <Header />
 
     <!-- Заголовок -->
     <h2 class="section-title">Аналитика и управление</h2>
@@ -76,61 +59,46 @@ import EmployeesBlock from '../components/analytics/EmployeesBlock.vue'
 import ScheduleBlock from '../components/analytics/ScheduleBlock.vue'
 import ReportsBlock from '../components/analytics/ReportsBlock.vue'
 import { useAuthStore } from '@/stores/authStore.js'
-
+import Header from '../components/Header.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-// Состояния для отображения компонентов
+// КОНСТАНТЫ
+const ROLES_MAP = {
+  'administrator': 'Администратор',
+  'florist': 'Флорист',
+  'seller': 'Продавец',
+  'seller - florist': 'Продавец-флорист'
+}
+
+const ROUTES = {
+  DASHBOARD: '/dashboard',
+  WAREHOUSE: '/warehouse',
+  CUSTOMERS: '/customers',
+  ORDERS: '/orders'
+}
+
+// СОСТОЯНИЕ
 const showEmployees = ref(false)
 const showSchedule = ref(false)
 const showReports = ref(false)
 
-const authStore = useAuthStore()
 
-const getRoleName = () => {
-  const role = authStore.user?.role
-  const roles = {
-    'administrator': 'Администратор',
-    'florist': 'Флорист',
-    'seller': 'Продавец',
-    'seller - florist': 'Продавец-флорист'
-  }
-  return roles[role] || role || 'Сотрудник'
-}
 
 
 // Навигация
-const goToDashboard = () => {
-  router.push('/dashboard')
-}
+const goToDashboard = () => router.push(ROUTES.DASHBOARD)
+const goToWarehouse = () => router.push(ROUTES.WAREHOUSE)
+const goToCustomers = () => router.push(ROUTES.CUSTOMERS)
+const goToOrders = () => router.push(ROUTES.ORDERS)
 
-const goToWarehouse = () => {
-  router.push('/warehouse')
-}
-
-const goToCustomers = () => {
-  router.push('/customers')
-}
-
-const goToOrders = () => {
-  router.push('/orders')
-}
-
-// Открытие компонентов
-const openEmployeesBlock = () => {
-  showEmployees.value = true
-}
-
-const openScheduleBlock = () => {
-  showSchedule.value = true
-}
-
-const openReportsBlock = () => {
-  showReports.value = true
-}
-
-
+// Открытие компонентов (упрощенно)
+const openEmployeesBlock = () => { showEmployees.value = true }
+const openScheduleBlock = () => { showSchedule.value = true }
+const openReportsBlock = () => { showReports.value = true }
 </script>
+
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
@@ -144,15 +112,7 @@ const openReportsBlock = () => {
   min-height: 100vh;
 }
 
-/* Верхняя панель */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f9cffd;
-}
+
 
 .top-bar h1 {
   margin: 0;
@@ -162,85 +122,7 @@ const openReportsBlock = () => {
   letter-spacing: -0.5px;
 }
 
-/* Навигация */
-.nav-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: #f5f5f7;
-  padding: 0.3rem;
-  border-radius: 60px;
-}
 
-.nav-link {
-  padding: 0.6rem 1.5rem;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5b4e;
-  border-radius: 40px;
-  transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.nav-link:hover {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-  transform: translateY(-2px);
-}
-
-.nav-link.active {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-}
-
-/* Профиль */
-.profile-section {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.user-name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #2c3e2f;
-  background: #f9cffd30;
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.user-role {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: #000000;
-}
-
-.logout-btn {
-  padding: 0.5rem 1.2rem;
-  background: #d9eb61;
-  text-decoration: none;
-  border-radius: 40px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e2f;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  border: none;
-}
-
-.logout-btn:hover {
-  background: #c4db3a;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px #d9eb6180;
-}
 
 /* Заголовок раздела */
 .section-title {

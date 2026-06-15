@@ -100,16 +100,32 @@ import { ref, watch } from 'vue'
 
 const props = defineProps({
   show: Boolean,
-  clients: Array,
-  flowers: Array,
-  bouquets: Array,
-  materials: Array,
-  users: Array
+  clients: {
+    type: Array,
+    default: () => []
+  },
+  flowers: {
+    type: Array,
+    default: () => []
+  },
+  bouquets: {
+    type: Array,
+    default: () => []
+  },
+  materials: {
+    type: Array,
+    default: () => []
+  },
+  users: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['close', 'save'])
 
-const localSale = ref({
+// ==================== ФАБРИКА НАЧАЛЬНЫХ ДАННЫХ ====================
+const getEmptySale = () => ({
   client_id: null,
   client_name: '',
   client_phone: '',
@@ -119,27 +135,91 @@ const localSale = ref({
   items: [{ type: 'flower', id: null, quantity: 1 }]
 })
 
+
+const localSale = ref(getEmptySale())
+
+//  методы
 const getClientName = (client) => {
   const name = `${client.name || ''} ${client.surname || ''}`.trim()
   const phone = client.phone || ''
-  if (name && phone) {
-    return `${name} - ${phone}`
-  }
+  if (name && phone) return `${name} - ${phone}`
   return name || phone || 'Клиент'
 }
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    localSale.value = {
-      client_id: null,
-      client_name: '',
-      client_phone: '',
-      payment_method: null,
-      comment: '',
-      items: [{ type: 'flower', id: null, quantity: 1 }]
+const getUserFullName = (user) => {
+  if (user.full_name?.trim()) {
+    const fullName = user.full_name.trim()
+    if (fullName && user.role) return `${fullName} (${user.role.name})`
+    return fullName
+  }
+  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+  const roleName = user.role?.name || ''
+  if (name && roleName) return `${name} (${roleName})`
+  return name || user.email?.split('@')[0] || 'Сотрудник'
+}
+
+// Сброс формы
+const resetForm = () => {
+  localSale.value = getEmptySale()
+}
+
+// Валидация формы
+const isValid = () => {
+  if (!localSale.value.client_id && !localSale.value.client_name) {
+    alert('Укажите клиента (выберите из списка или введите имя)')
+    return false
+  }
+
+  if (localSale.value.items.length === 0) {
+    alert('Добавьте хотя бы один товар')
+    return false
+  }
+
+  for (let i = 0; i < localSale.value.items.length; i++) {
+    const item = localSale.value.items[i]
+    if (!item.id) {
+      alert(`Выберите товар в позиции ${i + 1}`)
+      return false
+    }
+    if (!item.quantity || item.quantity < 1) {
+      alert(`Укажите количество товара в позиции ${i + 1}`)
+      return false
     }
   }
-})
+
+  return true
+}
+
+// Подготовка данных для отправки
+const prepareSaleData = () => {
+  const saleData = {
+    type: 'sale',
+    items: localSale.value.items.map(item => ({
+      type: item.type,
+      id: parseInt(item.id),
+      quantity: parseInt(item.quantity)
+    }))
+  }
+
+  // Маппинг полей (только если есть значение)
+  const fieldsMap = {
+    client_id: (val) => parseInt(val),
+    client_name: (val) => val,
+    client_phone: (val) => val,
+    payment_method: (val) => val,
+    comment: (val) => val,
+    user_id: (val) => parseInt(val)
+  }
+
+  for (const [field, transform] of Object.entries(fieldsMap)) {
+    const value = localSale.value[field]
+    if (value) {
+      saleData[field] = transform(value)
+    }
+  }
+
+  return saleData
+}
 
 const addItem = () => {
   localSale.value.items.push({ type: 'flower', id: null, quantity: 1 })
@@ -150,84 +230,27 @@ const removeItem = (index) => {
 }
 
 const save = () => {
-  // Валидация: должно быть указано либо client_id, либо client_name
-  if (!localSale.value.client_id && !localSale.value.client_name) {
-    alert('Укажите клиента (выберите из списка или введите имя)')
-    return
-  }
+  if (!isValid()) return
 
-  if (localSale.value.items.length === 0) {
-    alert('Добавьте хотя бы один товар')
-    return
+  try {
+    const saleData = prepareSaleData()
+    emit('save', saleData)
+  } catch (error) {
+    console.error('Ошибка подготовки данных:', error)
+    alert('Ошибка при оформлении продажи')
   }
-
-  // Проверяем каждый товар
-  for (let i = 0; i < localSale.value.items.length; i++) {
-    const item = localSale.value.items[i]
-    if (!item.id) {
-      alert(`Выберите товар в позиции ${i + 1}`)
-      return
-    }
-    if (!item.quantity || item.quantity < 1) {
-      alert(`Укажите количество товара в позиции ${i + 1}`)
-      return
-    }
-  }
-
-  // Подготавливаем данные для отправки в формате, который ожидает API
-  const saleData = {
-    type: 'sale',
-    items: localSale.value.items.map(item => ({
-      type: item.type,
-      id: parseInt(item.id),
-      quantity: parseInt(item.quantity)
-    }))
-  }
-
-  // Добавляем только заполненные поля
-  if (localSale.value.client_id) {
-    saleData.client_id = parseInt(localSale.value.client_id)
-  }
-  if (localSale.value.client_name) {
-    saleData.client_name = localSale.value.client_name
-  }
-  if (localSale.value.client_phone) {
-    saleData.client_phone = localSale.value.client_phone
-  }
-  if (localSale.value.payment_method) {
-    saleData.payment_method = localSale.value.payment_method
-  }
-  if (localSale.value.comment) {
-    saleData.comment = localSale.value.comment
-  }
-
-  emit('save', saleData)
-}
-
-const getUserFullName = (user) => {
-  // Используем аксессор full_name, который уже есть в модели
-  if (user.full_name) {
-    const fullName = user.full_name.trim()
-    if (fullName && user.role) {
-      return `${fullName} (${user.role.name})`
-    }
-    return fullName
-  }
-
-  // Если full_name нет, собираем вручную
-  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
-  const roleName = user.role?.name || ''
-
-  if (name && roleName) {
-    return `${name} (${roleName})`
-  }
-
-  return name || user.email?.split('@')[0] || 'Сотрудник'
 }
 
 const close = () => {
   emit('close')
 }
+
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    resetForm()
+  }
+})
 </script>
 
 <style scoped>

@@ -1,23 +1,6 @@
 <template>
   <div class="orders-page">
-    <!-- Верхняя панель с навигацией -->
-    <div class="top-bar">
-      <h1>Sunshine</h1>
-      <div class="nav-tabs">
-        <router-link to="/dashboard" class="nav-link">Главная</router-link>
-        <router-link to="/warehouse" class="nav-link">Склад</router-link>
-        <router-link to="/customers" class="nav-link">Клиенты</router-link>
-        <router-link to="/orders" class="nav-link active">Заказы</router-link>
-        <router-link to="/analytics" class="nav-link">Аналитика</router-link>
-      </div>
-      <div class="profile-section">
-        <div class="user-details">
-          <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
-          <span class="user-role">{{ getRoleName() }}</span>
-        </div>
-<!--        <router-link to="/dashboard" class="logout-btn">Выйти</router-link>-->
-      </div>
-    </div>
+    <Header />
 
     <h2 class="section-title">Управление заказами</h2>
 
@@ -134,7 +117,7 @@
       </div>
     </div>
 
-    <!-- Модальные окна (без изменений) -->
+    <!-- Модальные окна  -->
     <CreateOrderModal
       :show="showCreateOrderModal"
       :clients="dataStore.clients"
@@ -183,11 +166,29 @@ import CreateOrderModal from '../components/orders/CreateOrderModal.vue'
 import SaleModal from '../components/orders/SaleModal.vue'
 import InfaOrderModal from '../components/orders/InfaOrderModal.vue'
 import { useAuthStore } from '@/stores/authStore.js'
+import Header from '../components/Header.vue'
 
 const router = useRouter()
 const dataStore = useDataStore()
+const authStore = useAuthStore()
 
-// Состояние
+
+// константы
+
+
+const STATUS_TRANSITIONS = {
+  'assembly': 'new',
+  'ready': 'assembly',
+  'completed': 'ready'
+}
+
+const STATUS_TEXT = {
+  'new': 'Новый',
+  'assembly': 'В сборке',
+  'ready': 'Готов'
+}
+
+// состояние
 const activeNav = ref('orders')
 const selectedDate = ref('')
 const showCreateOrderModal = ref(false)
@@ -195,109 +196,27 @@ const showSaleModal = ref(false)
 const showDetailsModal = ref(false)
 const selectedOrder = ref(null)
 
-const authStore = useAuthStore()
-
-const getRoleName = () => {
-  const role = authStore.user?.role
-  const roles = {
-    'administrator': 'Администратор',
-    'florist': 'Флорист',
-    'seller': 'Продавец',
-    'seller - florist': 'Продавец-флорист'
-  }
-  return roles[role] || role || 'Сотрудник'
-}
-
-// Навигация
-const goToWarehouse = () => router.push('/warehouse')
-const goToClients = () => router.push('/customers')
-const goToAnalytics = () => router.push('/analytics')
 
 
-// Генерация дней на 30 дней вперед
-const weekDays = computed(() => {
-  const days = []
-  const today = new Date()
 
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(today)
-    date.setDate(today.getDate() + i)
-
-    const weekday = date.toLocaleDateString('ru-RU', { weekday: 'short' }).replace(',', '')
-    const day = date.getDate()
-    const month = date.getMonth() + 1
-    const year = date.getFullYear()
-
-    days.push({
-      fullDate: date.toISOString().split('T')[0],  // ← полная дата для сравнения
-      displayDate: `${day}.${month}`,              // ← для отображения
-      weekday: weekday,
-      year: year,
-      month: month,
-      day: day
-    })
-  }
-  return days
-})
-
-// // Заказы для выбранной даты (по дате доставки ИЛИ по дате создания)
-// const ordersForSelectedDate = computed(() => {
-//   return dataStore.orders.filter(order => {
-//     let deliveryDate = null
-//     if (order.delivery_date) {
-//       deliveryDate = order.delivery_date.split('T')[0]
-//     }
-//     return deliveryDate === selectedDate.value
-//   })
-// })
-
+// Заказы для выбранной даты (по дате доставки)
 const ordersForSelectedDate = computed(() => {
-  const filtered = dataStore.orders.filter(order => {
-    let deliveryDate = null
-    if (order.delivery_date) {
-      deliveryDate = order.delivery_date.split('T')[0]
-    }
-
+  return dataStore.orders.filter(order => {
+    const deliveryDate = order.delivery_date?.split('T')[0]
     return deliveryDate === selectedDate.value
   })
-
-  return filtered
 })
 
-
-
 // Срочные заказы (доставка сегодня)
-// const urgentOrders = computed(() => {
-//   const today = new Date().toISOString().split('T')[0]
-//   console.log('Сегодня:', today)
-//   return ordersForSelectedDate.value.filter(order =>
-//     order.status === 'new' &&
-//     (!order.delivery_date || order.delivery_date === today)
-//   )
-//
-// })
-
 const urgentOrders = computed(() => {
   const today = new Date().toISOString().split('T')[0]
-  const filtered = ordersForSelectedDate.value.filter(order => {
+  return ordersForSelectedDate.value.filter(order => {
     const deliveryDate = order.delivery_date?.split('T')[0]
-    const isUrgent = order.status === 'new' && (!order.delivery_date || deliveryDate === today)
-
-    return isUrgent
+    return order.status === 'new' && (!order.delivery_date || deliveryDate === today)
   })
-
-  return filtered
 })
 
 // Плановые заказы (доставка не сегодня)
-// const plannedOrders = computed(() => {
-//   const today = new Date().toISOString().split('T')[0]
-//   return ordersForSelectedDate.value.filter(order =>
-//     order.status === 'new' &&
-//     order.delivery_date &&
-//     order.delivery_date !== today
-//   )
-// })
 const plannedOrders = computed(() => {
   const today = new Date().toISOString().split('T')[0]
   return ordersForSelectedDate.value.filter(order => {
@@ -313,79 +232,29 @@ const assemblyOrders = computed(() => {
 
 // Готовые заказы
 const readyOrders = computed(() => {
-  return dataStore.orders.filter(order =>
-    order.status === 'ready'
-  )
+  return dataStore.orders.filter(order => order.status === 'ready')
 })
-
-
-// Завершенные заказы (за выбранную дату И предыдущие)
-// const completedOrders = computed(() => {
-//   // Преобразуем выбранную дату в объект Date для сравнения
-//   const selected = new Date(selectedDate.value)
-//   selected.setHours(0, 0, 0, 0)
-//
-//   return dataStore.orders.filter(order => {
-//     if (order.status !== 'completed') return false
-//
-//     // Получаем дату завершения заказа
-//     let completedDate = null
-//     if (order.updated_at) {
-//       completedDate = new Date(order.updated_at)
-//       completedDate.setHours(0, 0, 0, 0)
-//     }
-//
-//     // Показываем заказы, завершенные в выбранную дату ИЛИ ранее
-//     return completedDate && completedDate <= selected
-//   })
-// })
 
 // Завершенные заказы (за выбранную дату)
 const completedOrders = computed(() => {
   return dataStore.orders.filter(order => {
     if (order.status !== 'completed') return false
 
-    // Получаем дату завершения
-    const completedDate = order.updated_at?.split('T')[0]
-
-    // Для продаж (sale) - по дате создания (created_at)
+    // Для продаж (sale) - по дате создания
     if (order.type === 'sale') {
-      const createdDate = order.created_at?.split('T')[0]
-      return createdDate === selectedDate.value
+      return order.created_at?.split('T')[0] === selectedDate.value
     }
 
-    // Для заказов (order) - по дате завершения (updated_at)
-    return completedDate === selectedDate.value
+    // Для заказов (order) - по дате завершения
+    return order.updated_at?.split('T')[0] === selectedDate.value
   })
 })
 
-// Завершить заказ (списать товары)
-const completeOrder = async (orderId) => {
-  if (confirm('Выдать заказ? Товары будут списаны со склада')) {
-    try {
-      await dataStore.complete_order(orderId)
-      await loadOrdersForDate()
-      alert('Заказ выдан, товары списаны со склада')
-    } catch (error) {
-      console.error('Ошибка:', error)
-      alert(error.response?.data?.message || 'Ошибка при списании товаров')
-    }
-  }
-}
+// методы
+const getToday = () => new Date().toISOString().split('T')[0]
 
-// Завершить заказ из модального окна
-const completeOrderFromModal = async (orderId) => {
-  if (confirm('Выдать заказ? Товары будут списаны со склада')) {
-    try {
-      await dataStore.complete_order(orderId)
-      await loadOrdersForDate()
-      closeDetailsModal()
-      alert('Заказ выдан, товары списаны со склада')
-    } catch (error) {
-      console.error('Ошибка:', error)
-      alert(error.response?.data?.message || 'Ошибка при списании товаров')
-    }
-  }
+const loadOrdersForDate = async () => {
+  await dataStore.get_orders()
 }
 
 // Выбрать дату
@@ -394,115 +263,76 @@ const selectDate = (date) => {
   loadOrdersForDate()
 }
 
-
-// Загрузка заказов для даты
-const loadOrdersForDate = async () => {
-  await dataStore.get_orders()
-}
-
 // Открыть модалки
-const openOrderModal = () => {
-  showCreateOrderModal.value = true
-}
+const openOrderModal = () => { showCreateOrderModal.value = true }
+const openSaleModal = () => { showSaleModal.value = true }
 
-const openSaleModal = () => {
-  showSaleModal.value = true
-}
-
-// Обработка создания заказа
-const handleCreateOrder = async (orderData) => {
+// Общая обработка создания заказа/продажи
+const handleOrderCreate = async (data, isSale = false) => {
   try {
-    await dataStore.create_order(orderData)
-    showCreateOrderModal.value = false
+    await dataStore.create_order(data)
+    if (isSale) {
+      showSaleModal.value = false
+    } else {
+      showCreateOrderModal.value = false
+    }
     await loadOrdersForDate()
-    alert('Заказ успешно создан!')
+    alert(isSale ? 'Продажа успешно оформлена!' : 'Заказ успешно создан!')
   } catch (error) {
-    console.error('Ошибка создания заказа:', error)
-    alert('Ошибка при создании заказа')
+    console.error('Ошибка:', error)
+    alert(isSale ? 'Ошибка при оформлении продажи' : 'Ошибка при создании заказа')
   }
 }
 
-// Обработка продажи
-const handleSale = async (saleData) => {
+const handleCreateOrder = (orderData) => handleOrderCreate(orderData, false)
+const handleSale = (saleData) => handleOrderCreate(saleData, true)
+
+// Общая функция завершения заказа (с списанием товаров)
+const completeOrderWithConfirm = async (orderId, closeModal = false) => {
+  if (!confirm('Выдать заказ? Товары будут списаны со склада')) return
+
   try {
-    await dataStore.create_order(saleData)
-    showSaleModal.value = false
+    await dataStore.complete_order(orderId)
     await loadOrdersForDate()
-    alert('Продажа успешно оформлена!')
+    if (closeModal) closeDetailsModal()
+    alert('Заказ выдан, товары списаны со склада')
   } catch (error) {
-    console.error('Ошибка оформления продажи:', error)
-    alert('Ошибка при оформлении продажи')
+    console.error('Ошибка:', error)
+    alert(error.response?.data?.message || 'Ошибка при списании товаров')
   }
 }
+
+const completeOrder = (orderId) => completeOrderWithConfirm(orderId, false)
+const completeOrderFromModal = (orderId) => completeOrderWithConfirm(orderId, true)
 
 // Обновить статус заказа
 const updateOrderStatus = async (orderId, newStatus) => {
   try {
     await dataStore.update_order_status(orderId, newStatus)
     await loadOrdersForDate()
+
+    // Обновляем выбранный заказ, если он открыт
     if (selectedOrder.value?.id === orderId) {
       const updatedOrder = dataStore.orders.find(o => o.id === orderId)
-      if (updatedOrder) {
-        selectedOrder.value = updatedOrder
-      }
+      if (updatedOrder) selectedOrder.value = updatedOrder
     }
   } catch (error) {
     console.error('Ошибка обновления статуса:', error)
   }
 }
 
-// Просмотр деталей заказа
-const viewOrderDetails = (order) => {
-  selectedOrder.value = order
-  showDetailsModal.value = true
-}
-
-// Закрыть детали
-const closeDetailsModal = () => {
-  showDetailsModal.value = false
-  selectedOrder.value = null
-}
-
-// Загрузка данных при монтировании
-onMounted(async () => {
-  selectedDate.value = new Date().toISOString().split('T')[0]
-  await dataStore.get_orders()
-  await dataStore.get_clients()
-  await dataStore.get_flowers()
-  await dataStore.get_bouquets()
-  await dataStore.get_materials()
-  await dataStore.get_users()
-})
-
 // Вернуть заказ в предыдущий статус
 const goBackOrder = async (orderId) => {
   const order = dataStore.orders.find(o => o.id === orderId)
   if (!order) return
 
-  let prevStatus = ''
-  switch (order.status) {
-    case 'assembly':
-      prevStatus = 'new'
-      break
-    case 'ready':
-      prevStatus = 'assembly'
-      break
-    case 'completed':
-      prevStatus = 'ready'
-      break
-    default:
-      alert('Нельзя вернуть этот заказ')
-      return
+  const prevStatus = STATUS_TRANSITIONS[order.status]
+  if (!prevStatus) {
+    alert('Нельзя вернуть этот заказ')
+    return
   }
 
-  // Получаем текст статуса для отображения
-  const statusText = {
-    'new': 'Новый',
-    'assembly': 'В сборке',
-    'ready': 'Готов'
-  }
-
-  if (confirm(`Вернуть заказ #${orderId} из статуса "${order.status}" в "${statusText[prevStatus]}"?`)) {
+  if (confirm(`Вернуть заказ #${orderId} из статуса "${order.status}" в "${STATUS_TEXT[prevStatus]}"?`)) {
     try {
       await dataStore.update_order_status(orderId, prevStatus)
       await loadOrdersForDate()
@@ -513,6 +343,35 @@ const goBackOrder = async (orderId) => {
     }
   }
 }
+
+// Просмотр деталей заказа
+const viewOrderDetails = (order) => {
+  selectedOrder.value = order
+  showDetailsModal.value = true
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedOrder.value = null
+}
+
+// Загрузка всех данных
+const loadAllData = async () => {
+  await Promise.all([
+    dataStore.get_orders(),
+    dataStore.get_clients(),
+    dataStore.get_flowers(),
+    dataStore.get_bouquets(),
+    dataStore.get_materials(),
+    dataStore.get_users()
+  ])
+}
+
+
+onMounted(async () => {
+  selectedDate.value = getToday()
+  await loadAllData()
+})
 </script>
 
 <style scoped>
@@ -527,16 +386,6 @@ const goBackOrder = async (orderId) => {
   min-height: 100vh;
 }
 
-/* Верхняя панель */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f9cffd;
-}
-
 .top-bar h1 {
   margin: 0;
   font-size: 1.8rem;
@@ -545,83 +394,6 @@ const goBackOrder = async (orderId) => {
   letter-spacing: -0.5px;
 }
 
-/* Навигация */
-.nav-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: #f5f5f7;
-  padding: 0.3rem;
-  border-radius: 60px;
-}
-
-.nav-link {
-  padding: 0.6rem 1.5rem;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5b4e;
-  border-radius: 40px;
-  transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.nav-link:hover {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-  transform: translateY(-2px);
-}
-
-.nav-link.active {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-}
-
-/* Профиль */
-.profile-section {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.user-name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #2c3e2f;
-  background: #f9cffd30;
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.user-role {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: #000000;
-}
-
-.logout-btn {
-  padding: 0.5rem 1.2rem;
-  background: #d9eb61;
-  text-decoration: none;
-  border-radius: 40px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e2f;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #c4db3a;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px #d9eb6180;
-}
 
 /* Заголовок раздела */
 .section-title {

@@ -1,15 +1,7 @@
 <template>
   <div class="dashboard">
-    <div class="top-bar">
-      <h1>Sunshine</h1>
-      <div class="user-info">
-        <div class="user-details">
-          <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
-          <span class="user-role">{{ getRoleName() }}</span>
-        </div>
-        <button @click="handleLogout" class="logout-btn">Выйти</button>
-      </div>
-    </div>
+
+    <Header :show-navigation="false" />
 
     <!-- Компонент управления сменой -->
     <ShiftControl
@@ -52,44 +44,45 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useDataStore } from '../stores/dataStore'
 import ShiftControl from '../components/ShiftControl.vue'
+import Header from '../components/Header.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const dataStore = useDataStore()
 const activeShift = ref(null)
 
+// константы
+
+
+const ROUTES = {
+  WAREHOUSE: '/warehouse',
+  CUSTOMERS: '/customers',
+  ORDERS: '/orders',
+  ANALYTICS: '/analytics',
+  LOGIN: '/login'
+}
+
+// методы
+
 const handleLogout = async () => {
   await authStore.logout()
-  router.push('/login')
+  router.push(ROUTES.LOGIN)
 }
 
-const goToWarehouse = () => router.push('/warehouse')
-const goToCustomers = () => router.push('/customers')
-const goToOrders = () => router.push('/orders')
-const goToAnalytics = () => router.push('/analytics')
-
-const getRoleName = () => {
-  const role = authStore.user?.role
-  const roles = {
-    'administrator': 'Администратор',
-    'florist': 'Флорист',
-    'seller': 'Продавец',
-    'seller - florist': 'Продавец-флорист'
-  }
-  return roles[role] || role || 'Сотрудник'
-}
+const goToWarehouse = () => router.push(ROUTES.WAREHOUSE)
+const goToCustomers = () => router.push(ROUTES.CUSTOMERS)
+const goToOrders = () => router.push(ROUTES.ORDERS)
+const goToAnalytics = () => router.push(ROUTES.ANALYTICS)
 
 // Загрузка активной смены
 const loadActiveShift = async () => {
   try {
     await dataStore.get_workshifts()
 
-    const now = new Date()
-    const today = now.toISOString().split('T')[0]
+    const today = new Date().toISOString().split('T')[0]
 
-    // Ищем активную смену для текущего пользователя
     const active = dataStore.workshifts?.find(shift => {
-      const shiftDate = shift.date ? shift.date.split('T')[0] : null
+      const shiftDate = shift.date?.split('T')[0]
       return shift.user_id === authStore.user?.id &&
         shiftDate === today &&
         !shift.end_time
@@ -100,13 +93,13 @@ const loadActiveShift = async () => {
     console.error('Ошибка загрузки смен:', error)
     activeShift.value = null
   }
-
 }
 
 // Обновление после изменения смены
 const onShiftChanged = () => {
   loadActiveShift()
 }
+
 
 onMounted(() => {
   loadActiveShift()
@@ -140,15 +133,7 @@ onMounted(() => {
   pointer-events: none;
 }
 
-/* Верхняя панель */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f9cffd;
-}
+
 
 .top-bar h1 {
   margin: 0;
@@ -156,53 +141,6 @@ onMounted(() => {
   font-weight: 700;
   color: #f9cffd; /* розовый из основных цветов */
   letter-spacing: -0.5px;
-}
-
-/* Блок с пользователем и кнопкой — увеличили расстояние */
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 2rem; /* было 1.5rem — увеличили */
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.user-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #2c3e2f;
-  background: #f9cffd30;
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.user-role {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #000000;
-}
-
-.logout-btn {
-  padding: 0.5rem 1.2rem;
-  background: #d9eb61;
-  border: none;
-  border-radius: 40px;
-  cursor: pointer;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e2f;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #c4db3a;
-  transform: scale(1.02);
-  box-shadow: 0 2px 8px #d9eb6180;
 }
 
 /* Сетка модулей */

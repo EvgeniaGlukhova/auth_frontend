@@ -56,44 +56,39 @@
 </template>
 
 <script setup>
-const props = defineProps({
-  order: Object,
-  type: String // urgent, planned, assembly, ready, completed
-})
-
-const emit = defineEmits(['status-change', 'view-details', 'go-back'])
-
 import { computed } from 'vue'
-// Проверяем, можно ли вернуть заказ в предыдущий статус
-const canGoBack = computed(() => {
-  const backableStatuses = ['assembly', 'ready', 'completed']
-  return backableStatuses.includes(props.type)
+
+const props = defineProps({
+  order: {
+    type: Object,
+    required: true
+  },
+  type: {
+    type: String,
+    required: true
+  }
 })
+
+const emit = defineEmits(['status-change', 'view-details', 'go-back', 'complete-order'])
+
+
+const canGoBack = computed(() => ['assembly', 'ready', 'completed'].includes(props.type))
+
+// доп функции
+const formatDate = (date) => date?.split('T')[0] || ''
+const formatTime = (time) => time?.substring(0, 5) || ''
 
 const getOrderItemsText = () => {
-  if (!props.order.items || props.order.items.length === 0) {
-    return 'Нет товаров'
-  }
-  return props.order.items.map(item => {
-    const name = item.itemable?.name || 'Товар'
-    const quantity = item.quantity
-    return `${name} x${quantity}`
-  }).join(', ')
+  if (!props.order.items?.length) return 'Нет товаров'
+  return props.order.items.map(item => `${item.itemable?.name || 'Товар'} x${item.quantity}`).join(', ')
 }
 
 const getTimeText = () => {
-  const formatDate = (date) => date?.split('T')[0] || ''
-  const formatTime = (time) => time?.substring(0, 5) || ''
-
   if (props.order.delivery_date && props.order.delivery_time) {
     return `${formatDate(props.order.delivery_date)} ${formatTime(props.order.delivery_time)}`
   }
-  if (props.order.delivery_date) {
-    return formatDate(props.order.delivery_date)
-  }
-  if (props.order.assembly_date) {
-    return `Сборка: ${formatDate(props.order.assembly_date)}`
-  }
+  if (props.order.delivery_date) return formatDate(props.order.delivery_date)
+  if (props.order.assembly_date) return `Сборка: ${formatDate(props.order.assembly_date)}`
   return 'Дата не указана'
 }
 </script>

@@ -74,29 +74,66 @@
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  initialData: Object,
-  allProducts: Array,
-  users: Array
+  initialData: {
+    type: Object,
+    default: () => ({})
+  },
+  allProducts: {
+    type: Array,
+    default: () => []
+  },
+  users: {
+    type: Array,
+    default: () => []
+  }
 })
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits(['close', 'confirm'])  // ← ИСПРАВЛЕНО
 
+// ==================== ФАБРИКИ НАЧАЛЬНЫХ ДАННЫХ ====================
+const getTodayDate = () => new Date().toISOString().split('T')[0]
+
+const resetForm = () => {
+  selectedUniqueId.value = null
+  quantity.value = 1
+  reason.value = 'Продажа'
+  writeoff_date.value = getTodayDate()
+  comment.value = ''
+  user_id.value = null
+}
+
+// состояния
 const selectedUniqueId = ref(null)
 const quantity = ref(1)
 const reason = ref('Продажа')
-const writeoff_date = ref(new Date().toISOString().split('T')[0])
+const writeoff_date = ref(getTodayDate())
 const comment = ref('')
+const user_id = ref(null)
 
+// методы
+const getUserFullName = (user) => {
+  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
+  return name || user.email?.split('@')[0] || 'Сотрудник'
+}
+
+// Обновление формы из пропсов
 watch(() => props.initialData, (newVal) => {
-  if (newVal && newVal.product_id && newVal.product_type) {
+  if (!newVal || Object.keys(newVal).length === 0) {
+    resetForm()
+    return
+  }
+
+  if (newVal.product_id && newVal.product_type) {
     selectedUniqueId.value = `${newVal.product_type}_${newVal.product_id}`
   } else {
     selectedUniqueId.value = null
   }
-  quantity.value = newVal?.quantity || 1
-  reason.value = newVal?.reason || 'Продажа'
-  writeoff_date.value = newVal?.writeoff_date || new Date().toISOString().split('T')[0]
-  comment.value = newVal?.comment || ''
+
+  quantity.value = newVal.quantity || 1
+  reason.value = newVal.reason || 'Продажа'
+  writeoff_date.value = newVal.writeoff_date || getTodayDate()
+  comment.value = newVal.comment || ''
+  user_id.value = newVal.user_id || null
 }, { immediate: true, deep: true })
 
 const selectedProduct = computed(() => {
@@ -114,33 +151,34 @@ const onProductChange = () => {
   console.log('selectedProduct:', selectedProduct.value)
 }
 
-const user_id = ref(null)
-
-const getUserFullName = (user) => {
-  const name = `${user.surname || ''} ${user.name || ''} ${user.patronymic || ''}`.trim()
-  return name || user.email?.split('@')[0] || 'Сотрудник'
-}
-
-const handleConfirm = () => {
+const isValid = () => {
   if (!selectedUniqueId.value) {
     alert('Выберите товар')
-    return
+    return false
   }
   if (!quantity.value || quantity.value <= 0) {
     alert('Укажите количество')
-    return
+    return false
   }
 
   const product = selectedProduct.value
   if (!product) {
     alert('Товар не найден')
-    return
+    return false
   }
 
   if (quantity.value > product.quantity) {
     alert(`Недостаточно товара! Доступно: ${product.quantity} шт`)
-    return
+    return false
   }
+
+  return true
+}
+
+const handleConfirm = () => {
+  if (!isValid()) return
+
+  const product = selectedProduct.value
 
   emit('confirm', {
     product_id: product.id,
@@ -275,7 +313,7 @@ select.form-input {
   font-size: 0.85rem;
   font-weight: 500;
   text-align: center;
-  border-left: 3px solid #d9eb61;
+
 }
 
 .error-text {

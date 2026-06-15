@@ -55,41 +55,67 @@ const dataStore = useDataStore()
 
 const showModal = ref(false)
 
-// Текущее время в формате HH:MM
-const currentTime = computed(() => {
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+const getCurrentTime = () => {
   const now = new Date()
   const hours = now.getHours().toString().padStart(2, '0')
   const minutes = now.getMinutes().toString().padStart(2, '0')
   return `${hours}:${minutes}`
-})
+}
 
+const getCurrentDate = () => {
+  return new Date().toISOString().split('T')[0]
+}
+
+const getCurrentDateTime = () => {
+  return new Date().toISOString()
+}
+
+// ==================== COMPUTED ====================
+const currentTime = computed(getCurrentTime)
+
+// ==================== МЕТОДЫ ====================
 const openShiftModal = () => {
   showModal.value = true
+}
+
+const closeModal = () => {
+  showModal.value = false
+}
+
+const handleError = (error) => {
+  console.error('Ошибка:', error)
+  alert('Ошибка при выполнении операции')
+}
+
+const openShift = async () => {
+  const shiftData = {
+    user_id: authStore.user?.id,
+    date: getCurrentDate(),
+    start_time: currentTime.value
+  }
+  await dataStore.create_workshift(shiftData)
+  emit('shift-opened')
+}
+
+const closeShift = async () => {
+  await dataStore.update_workshift(props.activeShift.id, {
+    end_time: currentTime.value,
+    closed_at: getCurrentDateTime()
+  })
+  emit('shift-closed')
 }
 
 const confirmAction = async () => {
   try {
     if (props.activeShift) {
-      // Закрытие смены - подставляем текущее время
-      await dataStore.update_workshift(props.activeShift.id, {
-        end_time: currentTime.value,
-        closed_at: new Date().toISOString()
-      })
-      emit('shift-closed')
+      await closeShift()
     } else {
-      // Открытие смены - подставляем текущее время
-      const shiftData = {
-        user_id: authStore.user?.id,
-        date: new Date().toISOString().split('T')[0],
-        start_time: currentTime.value
-      }
-      await dataStore.create_workshift(shiftData)
-      emit('shift-opened')
+      await openShift()
     }
-    showModal.value = false
+    closeModal()
   } catch (error) {
-    console.error('Ошибка:', error)
-    alert('Ошибка при выполнении операции')
+    handleError(error)
   }
 }
 </script>

@@ -1,23 +1,6 @@
 <template>
   <div class="warehouse-page">
-    <!-- Верхняя панель с навигацией -->
-    <div class="top-bar">
-      <h1>Sunshine</h1>
-      <div class="nav-tabs">
-        <router-link to="/dashboard" class="nav-link">Главная</router-link>
-        <router-link to="/warehouse" class="nav-link active">Склад</router-link>
-        <router-link to="/customers" class="nav-link">Клиенты</router-link>
-        <router-link to="/orders" class="nav-link">Заказы</router-link>
-        <router-link to="/analytics" class="nav-link">Аналитика</router-link>
-      </div>
-      <div class="search-profile">
-        <div class="user-details">
-          <span class="user-name">{{ authStore.user?.email?.split('@')[0] || 'Сотрудник' }}</span>
-          <span class="user-role">{{ getRoleName() }}</span>
-        </div>
-<!--        <router-link to="/dashboard" class="logout-btn">Выйти</router-link>-->
-      </div>
-    </div>
+    <Header />
 
     <!-- Заголовок раздела -->
     <h2 class="section-title">Складской учет</h2>
@@ -77,9 +60,7 @@
           <td><strong>{{ product.name }}</strong></td>
           <td>
             <span :class="['type-badge', activeTypeTab]">
-              <template v-if="activeTypeTab === 'components'">Цветок</template>
-              <template v-else-if="activeTypeTab === 'bouquets'">Букет</template>
-              <template v-else-if="activeTypeTab === 'materials'">Материал</template>
+                {{ getTypeName() }}
             </span>
           </td>
           <td>{{ product.price }} руб.</td>
@@ -152,37 +133,23 @@ import ComingModal from '../components/warehouse/ComingModal.vue'
 import ExpenseModal from '../components/warehouse/ExpenseModal.vue'
 import CreateBouquetModal from '../components/warehouse/CreateBouquetModal.vue'
 import { useAuthStore } from '@/stores/authStore.js'
-
+import Header from '../components/Header.vue'
 
 const dataStore = useDataStore()
+const authStore = useAuthStore()
 
-// Состояние
-
+// состояния
 const activeTypeTab = ref('components')
 const searchQuery = ref('')
 
-// Модальные окна
 const showAddModal = ref(false)
 const showComingModal = ref(false)
 const showExpenseModal = ref(false)
 const showCreateBouquetModal = ref(false)
 const isEditing = ref(false)
 
-const authStore = useAuthStore()
-
-const getRoleName = () => {
-  const role = authStore.user?.role
-  const roles = {
-    'administrator': 'Администратор',
-    'florist': 'Флорист',
-    'seller': 'Продавец',
-    'seller - florist': 'Продавец-флорист'
-  }
-  return roles[role] || role || 'Сотрудник'
-}
-
-// Форма добавления/редактирования
-const formData = ref({
+//
+const getEmptyFormData = () => ({
   id: null,
   name: '',
   price: '',
@@ -190,8 +157,7 @@ const formData = ref({
   supplier_id: null
 })
 
-// Данные для прихода
-const comingData = ref({
+const getEmptyComingData = () => ({
   product_id: null,
   quantity: 0,
   received_date: new Date().toISOString().split('T')[0],
@@ -199,8 +165,7 @@ const comingData = ref({
   comment: ''
 })
 
-// Данные для расхода
-const expenseData = ref({
+const getEmptyExpenseData = () => ({
   product_id: null,
   quantity: 0,
   reason: 'Продажа',
@@ -208,8 +173,7 @@ const expenseData = ref({
   comment: ''
 })
 
-// Данные для сборки букета
-const bouquetData = ref({
+const getEmptyBouquetData = () => ({
   name: '',
   price: 0,
   composition: [{ flower_id: null, quantity: 0 }],
@@ -218,14 +182,22 @@ const bouquetData = ref({
   user_id: null
 })
 
-// Вкладки
+const formData = ref(getEmptyFormData())
+const comingData = ref(getEmptyComingData())
+const expenseData = ref(getEmptyExpenseData())
+const bouquetData = ref(getEmptyBouquetData())
+
+// константы
 const typeTabs = [
   { id: 'components', name: 'Цветы' },
   { id: 'bouquets', name: 'Готовые букеты' },
   { id: 'materials', name: 'Материалы' }
 ]
 
-// Все товары для выпадающих списков
+
+
+
+
 const allProducts = computed(() => {
   const flowers = (dataStore.flowers || []).map(f => ({
     ...f,
@@ -251,21 +223,35 @@ const allProducts = computed(() => {
   return [...flowers, ...bouquets, ...materials]
 })
 
-// Текущие товары в зависимости от вкладки
 const currentProducts = computed(() => {
-  if (activeTypeTab.value === 'components') {
-    return dataStore.flowers || []
-  } else if (activeTypeTab.value === 'bouquets') {
-    return dataStore.bouquets || []
-  } else if (activeTypeTab.value === 'materials') {
-    return dataStore.materials || []
+  const lists = {
+    components: dataStore.flowers,
+    bouquets: dataStore.bouquets,
+    materials: dataStore.materials
   }
-  return []
+  return lists[activeTypeTab.value] || []
 })
 
 
+const getProductActions = (type = activeTypeTab.value) => ({
+  create: {
+    components: (data) => dataStore.create_flower(data),
+    bouquets: (data) => dataStore.create_bouquet(data),
+    materials: (data) => dataStore.create_material(data)
+  }[type],
+  update: {
+    components: (id, data) => dataStore.update_flower(id, data),
+    bouquets: (id, data) => dataStore.update_bouquet(id, data),
+    materials: (id, data) => dataStore.update_material(id, data)
+  }[type],
+  delete: {
+    components: (id) => dataStore.delete_flower(id),
+    bouquets: (id) => dataStore.delete_bouquet(id),
+    materials: (id) => dataStore.delete_material(id)
+  }[type]
+})
 
-// Загрузка данных
+// основные методы
 const loadData = async () => {
   await Promise.all([
     dataStore.get_flowers(searchQuery.value),
@@ -276,75 +262,220 @@ const loadData = async () => {
   ])
 }
 
-// Переключение вкладки
 const changeTypeTab = async (tabId) => {
   activeTypeTab.value = tabId
   searchQuery.value = ''
   await loadData()
 }
 
-// Открыть модалку добавления
+// работа с товарами
+const saveProduct = async (data) => {
+  if (!data.name || !data.price) {
+    alert('Заполните обязательные поля (название и цена)')
+    return
+  }
+
+  const actions = getProductActions()
+  if (!actions) return
+
+  const sendData = { name: data.name, price: data.price }
+
+  // Для материалов и новых цветов нужно quantity
+  if (!isEditing.value && activeTypeTab.value !== 'bouquets') {
+    sendData.quantity = data.quantity || 0
+  }
+
+  // Для цветов и материалов можно указать поставщика
+  if (activeTypeTab.value !== 'bouquets' && data.supplier_id) {
+    sendData.supplier_id = data.supplier_id
+  }
+
+  try {
+    if (isEditing.value) {
+      await actions.update(data.id, sendData)
+    } else {
+      await actions.create(sendData)
+    }
+    closeAddModal()
+    await loadData()
+    alert(isEditing.value ? 'Товар обновлен' : 'Товар добавлен')
+  } catch (error) {
+    console.error('Ошибка сохранения:', error)
+    alert('Ошибка при сохранении')
+  }
+}
+
+const deleteProduct = async (product) => {
+  if (!confirm(`Удалить товар "${product.name}"?`)) return
+
+  const actions = getProductActions()
+  if (!actions) return
+
+  try {
+    await actions.delete(product.id)
+    await loadData()
+  } catch (error) {
+    console.error('Ошибка удаления:', error)
+    alert('Ошибка при удалении')
+  }
+}
+
+// приход расход
+const findProduct = (productId, productType) => {
+  return allProducts.value.find(p => p.id === productId && p.type === productType)
+}
+
+const handleStockMovement = async (data, isIncome) => {
+  if (!data.product_id || !data.quantity) {
+    alert('Выберите товар и укажите количество')
+    return
+  }
+
+  const product = findProduct(data.product_id, data.product_type)
+  if (!product) {
+    alert('Товар не найден')
+    return
+  }
+
+  const operation = isIncome ? 'incoming' : 'outgoing'
+  const actionMap = {
+    flower: {
+      incoming: (id, d) => dataStore.incoming_flower(id, d),
+      outgoing: (id, d) => dataStore.outgoing_flower(id, d)
+    },
+    material: {
+      incoming: (id, d) => dataStore.incoming_material(id, d),
+      outgoing: (id, d) => dataStore.outgoing_material(id, d)
+    },
+    bouquet: {
+      incoming: async (id, d) => {
+        const bouquet = dataStore.bouquets.find(b => b.id === id)
+        await dataStore.update_bouquet(id, { quantity: (bouquet?.quantity || 0) + d.quantity })
+      },
+      outgoing: async (id, d) => {
+        const bouquet = dataStore.bouquets.find(b => b.id === id)
+        await dataStore.update_bouquet(id, { quantity: (bouquet?.quantity || 0) - d.quantity })
+      }
+    }
+  }
+
+  const action = actionMap[product.type]?.[operation]
+  if (!action) {
+    alert('Операция не поддерживается')
+    return
+  }
+
+  try {
+    await action(product.id, {
+      quantity: data.quantity,
+      reason: data.reason || (isIncome ? 'Поставка' : 'Расход'),
+      user_id: data.user_id
+    })
+
+    if (isIncome) {
+      showComingModal.value = false
+    } else {
+      showExpenseModal.value = false
+    }
+    await loadData()
+    alert(`${isIncome ? 'Приход' : 'Расход'} оформлен успешно!`)
+  } catch (error) {
+    console.error('Ошибка:', error)
+    alert(error.response?.data?.message || `Ошибка при оформлении ${isIncome ? 'прихода' : 'расхода'}`)
+  }
+}
+
+const confirmComing = (data) => handleStockMovement(data, true)
+const confirmExpense = (data) => handleStockMovement(data, false)
+
+// сборка букета
+const checkComponentsAvailability = (data) => {
+  for (const item of data.composition) {
+    if (!item.itemable_id || !item.quantity) {
+      alert('Заполните все компоненты букета')
+      return false
+    }
+
+    const requiredQty = item.quantity * data.quantity
+
+    if (item.itemable_type === 'flower') {
+      const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+      if (!flower || (flower.quantity || 0) < requiredQty) {
+        alert(`Недостаточно цветов "${flower?.name}" на складе!`)
+        return false
+      }
+    } else if (item.itemable_type === 'material') {
+      const material = dataStore.materials.find(m => m.id === item.itemable_id)
+      if (!material || (material.quantity || 0) < requiredQty) {
+        alert(`Недостаточно материала "${material?.name}" на складе!`)
+        return false
+      }
+    }
+  }
+  return true
+}
+
+const confirmCreateBouquet = async (data) => {
+  if (!data.name || !data.price) {
+    alert('Заполните название и цену букета')
+    return
+  }
+  if (!data.user_id) {
+    alert('Выберите сотрудника, который собирает букет')
+    return
+  }
+
+  if (!checkComponentsAvailability(data)) return
+
+  try {
+    const bouquetResult = await dataStore.create_bouquet({
+      name: data.name,
+      price: data.price,
+      quantity: data.quantity,
+      description: data.description,
+      production_date: new Date().toISOString().split('T')[0]
+    })
+
+    const bouquetId = bouquetResult.data?.id || bouquetResult.id
+
+    for (const item of data.composition) {
+      await dataStore.create_bouquet_item({
+        bouquet_id: bouquetId,
+        itemable_id: item.itemable_id,
+        itemable_type: item.itemable_type,
+        flower_id: item.itemable_id,
+        quantity: item.quantity * data.quantity,
+        user_id: data.user_id
+      })
+    }
+
+    // Списываем компоненты
+    for (const item of data.composition) {
+      if (item.itemable_type === 'flower') {
+        const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
+        await dataStore.update_flower(flower.id, { quantity: (flower.quantity || 0) - (item.quantity * data.quantity) })
+      } else if (item.itemable_type === 'material') {
+        const material = dataStore.materials.find(m => m.id === item.itemable_id)
+        await dataStore.update_material(material.id, { quantity: (material.quantity || 0) - (item.quantity * data.quantity) })
+      }
+    }
+
+    closeCreateBouquetModal()
+    await loadData()
+    alert('Букет успешно собран!')
+  } catch (error) {
+    console.error('Ошибка сборки букета:', error)
+    alert(error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : 'Ошибка при сборке букета')
+  }
+}
+
+// методы модальных окон
 const openAddModal = () => {
   isEditing.value = false
-  formData.value = { id: null, name: '', price: '', quantity: 0, supplier_id: null }
+  formData.value = getEmptyFormData()
   showAddModal.value = true
 }
 
-// Открыть модалку прихода
-const openComingModal = () => {
-  comingData.value = {
-    product_id: null,
-    quantity: 0,
-    received_date: new Date().toISOString().split('T')[0],
-    supplier: '',
-    comment: ''
-  }
-  showComingModal.value = true
-}
-
-// Открыть модалку расхода
-const openExpenseModal = () => {
-  expenseData.value = {
-    product_id: null,
-    quantity: 0,
-    reason: 'Продажа',
-    writeoff_date: new Date().toISOString().split('T')[0],
-    comment: ''
-  }
-  showExpenseModal.value = true
-}
-
-// Открыть модалку сборки букета
-const openCreateBouquetModal = () => {
-  bouquetData.value = {
-    name: '',
-    price: 0,
-    composition: [{ flower_id: null, quantity: 0 }],
-    quantity: 1,
-    description: ''
-  }
-  showCreateBouquetModal.value = true
-}
-
-// Закрыть модалку добавления
-const closeAddModal = () => {
-  showAddModal.value = false
-  formData.value = { id: null, name: '', price: '', quantity: 0, supplier_id: null }
-}
-
-// Закрыть модалку сборки букета
-const closeCreateBouquetModal = () => {
-  showCreateBouquetModal.value = false
-  bouquetData.value = {
-    name: '',
-    price: 0,
-    composition: [{ flower_id: null, quantity: 0 }],
-    quantity: 1,
-    description: ''
-  }
-}
-
-// Редактировать товар
 const editProduct = (product) => {
   isEditing.value = true
   formData.value = {
@@ -356,342 +487,48 @@ const editProduct = (product) => {
   showAddModal.value = true
 }
 
-// Сохранить товар (добавить/редактировать)
-const saveProduct = async (data) => {
-  if (!data.name || !data.price) {
-    alert('Заполните обязательные поля (название и цена)')
-    return
-  }
-
-  const sendData = {
-    name: data.name,
-    price: data.price
-  }
-
-  // Для материалов нужно передавать type
-  if (activeTypeTab.value === 'materials') {
-    sendData.quantity = data.quantity || 0
-  }
-
-  if (!isEditing.value && activeTypeTab.value === 'components') {
-    sendData.quantity = data.quantity || 0
-  }
-
-  if ((activeTypeTab.value === 'components' || activeTypeTab.value === 'materials') && data.supplier_id) {
-    sendData.supplier_id = data.supplier_id
-  }
-
-  try {
-    if (isEditing.value) {
-      if (activeTypeTab.value === 'components') {
-        await dataStore.update_flower(data.id, sendData)
-      } else if (activeTypeTab.value === 'bouquets') {
-        await dataStore.update_bouquet(data.id, sendData)
-      } else if (activeTypeTab.value === 'materials') {
-        await dataStore.update_material(data.id, sendData)
-      }
-    } else {
-      if (activeTypeTab.value === 'components') {
-        await dataStore.create_flower(sendData)
-      } else if (activeTypeTab.value === 'bouquets') {
-        await dataStore.create_bouquet(sendData)
-      } else if (activeTypeTab.value === 'materials') {
-        await dataStore.create_material(sendData)
-      }
-    }
-
-    closeAddModal()
-    await loadData()
-    alert(isEditing.value ? 'Товар обновлен' : 'Товар добавлен')
-  } catch (error) {
-    console.error('Ошибка сохранения:', error)
-    alert('Ошибка при сохранении')
-  }
+const closeAddModal = () => {
+  showAddModal.value = false
+  formData.value = getEmptyFormData()
 }
 
-
-// Подтвердить приход
-// Подтвердить приход
-const confirmComing = async (data) => {
-  if (!data.product_id || !data.quantity) {
-    alert('Выберите товар и укажите количество')
-    return
-  }
-
-  // Ищем товар по id И по типу
-  const product = allProducts.value.find(p => p.id === data.product_id && p.type === data.product_type)
-  if (!product) {
-    alert('Товар не найден')
-    return
-  }
-
-  try {
-    if (product.type === 'flower') {
-      await dataStore.incoming_flower(product.id, {
-        quantity: data.quantity,
-        reason: data.reason || 'Поставка от поставщика',
-        user_id: data.user_id
-      })
-    } else if (product.type === 'material') {
-      await dataStore.incoming_material(product.id, {
-        quantity: data.quantity,
-        reason: data.reason || 'Поставка материала',
-        user_id: data.user_id
-      })
-    } else {
-      const newQty = (product.quantity || 0) + data.quantity
-      await dataStore.update_bouquet(product.id, {
-        quantity: newQty,
-        reason: data.reason || 'Поставка'
-      })
-    }
-
-    showComingModal.value = false
-    await loadData()
-    alert('Приход оформлен успешно!')
-  } catch (error) {
-    console.error('Ошибка прихода:', error)
-    alert(error.response?.data?.message || 'Ошибка при оформлении прихода')
-  }
+const openComingModal = () => {
+  comingData.value = getEmptyComingData()
+  showComingModal.value = true
 }
 
-// Подтвердить расход
-const confirmExpense = async (data) => {
-  if (!data.product_id || !data.quantity) {
-    alert('Выберите товар и укажите количество')
-    return
-  }
-
-  const product = allProducts.value.find(p => p.id === data.product_id && p.type === data.product_type)
-  if (!product) {
-    alert('Товар не найден')
-    return
-  }
-
-  try {
-    if (product.type === 'flower') {
-      await dataStore.outgoing_flower(product.id, {
-        quantity: data.quantity,
-        reason: data.reason || 'Расход',
-        user_id: data.user_id
-      })
-    } else if (product.type === 'material') {
-      await dataStore.outgoing_material(product.id, {
-        quantity: data.quantity,
-        reason: data.reason || 'Расход материала',
-        user_id: data.user_id
-      })
-    } else {
-      const newQty = (product.quantity || 0) - data.quantity
-      await dataStore.update_bouquet(product.id, { quantity: newQty })
-    }
-
-    showExpenseModal.value = false
-    await loadData()
-    alert('Расход оформлен успешно!')
-  } catch (error) {
-    console.error('Ошибка расхода:', error)
-    alert(error.response?.data?.message || 'Ошибка при списании')
-  }
+const openExpenseModal = () => {
+  expenseData.value = getEmptyExpenseData()
+  showExpenseModal.value = true
 }
 
-// Подтвердить сборку букета
-// const confirmCreateBouquet = async (data) => {
-//   if (!data.name || !data.price) {
-//     alert('Заполните название и цену букета')
-//     return
-//   }
-//   if (!data.user_id) {
-//     alert('Выберите сотрудника, который собирает букет')
-//     return
-//   }
-//
-//   // Проверяем наличие всех компонентов
-//   for (const item of data.composition) {
-//     if (!item.itemable_id || !item.quantity) {
-//       alert('Заполните все компоненты букета')
-//       return
-//     }
-//
-//     if (item.itemable_type === 'flower') {
-//       const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
-//       const requiredQty = item.quantity * data.quantity
-//       if (!flower || (flower.quantity || 0) < requiredQty) {
-//         alert(`Недостаточно цветов "${flower?.name}" на складе!`)
-//         return
-//       }
-//     } else if (item.itemable_type === 'material') {
-//       const material = dataStore.materials.find(m => m.id === item.itemable_id)
-//       const requiredQty = item.quantity * data.quantity
-//       if (!material || (material.quantity || 0) < requiredQty) {
-//         alert(`Недостаточно материала "${material?.name}" на складе!`)
-//         return
-//       }
-//     }
-//   }
-//
-//   try {
-//     // 1. Создаем букет
-//     const bouquetResult = await dataStore.create_bouquet({
-//       name: data.name,
-//       price: data.price,
-//       quantity: data.quantity,
-//       description: data.description,
-//       production_date: new Date().toISOString().split('T')[0]
-//     })
-//
-//     const bouquetId = bouquetResult.data?.id || bouquetResult.id
-//
-//     // 2. Добавляем компоненты в букет (bouquet_items)
-//     for (const item of data.composition) {
-//       await dataStore.create_bouquet_item({
-//         bouquet_id: bouquetId,
-//         itemable_id: item.itemable_id,
-//         itemable_type: item.itemable_type,  // 'flower' или 'material'
-//         quantity: item.quantity * data.quantity,
-//         user_id: data.user_id
-//       })
-//     }
-//
-//     // 3. Списываем компоненты со склада
-//     for (const item of data.composition) {
-//       if (item.itemable_type === 'flower') {
-//         const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
-//         const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
-//         await dataStore.update_flower(flower.id, { quantity: newQty })
-//       } else if (item.itemable_type === 'material') {
-//         const material = dataStore.materials.find(m => m.id === item.itemable_id)
-//         const newQty = (material.quantity || 0) - (item.quantity * data.quantity)
-//         await dataStore.update_material(material.id, { quantity: newQty })
-//       }
-//     }
-//
-//     closeCreateBouquetModal()
-//     await loadData()
-//     alert('Букет успешно собран!')
-//   } catch (error) {
-//     console.error('Ошибка сборки букета:', error)
-//     alert('Ошибка при сборке букета')
-//   }
-// }
-
-// Подтвердить сборку букета
-const confirmCreateBouquet = async (data) => {
-  if (!data.name || !data.price) {
-    alert('Заполните название и цену букета')
-    return
-  }
-  if (!data.user_id) {
-    alert('Выберите сотрудника, который собирает букет')
-    return
-  }
-
-  // Проверяем наличие всех компонентов
-  for (const item of data.composition) {
-    if (!item.itemable_id || !item.quantity) {
-      alert('Заполните все компоненты букета')
-      return
-    }
-
-    if (item.itemable_type === 'flower') {
-      const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
-      const requiredQty = item.quantity * data.quantity
-      if (!flower || (flower.quantity || 0) < requiredQty) {
-        alert(`Недостаточно цветов "${flower?.name}" на складе!`)
-        return
-      }
-    } else if (item.itemable_type === 'material') {
-      const material = dataStore.materials.find(m => m.id === item.itemable_id)
-      const requiredQty = item.quantity * data.quantity
-      if (!material || (material.quantity || 0) < requiredQty) {
-        alert(`Недостаточно материала "${material?.name}" на складе!`)
-        return
-      }
-    }
-  }
-
-  try {
-    // 1. Создаем букет
-    const bouquetResult = await dataStore.create_bouquet({
-      name: data.name,
-      price: data.price,
-      quantity: data.quantity,
-      description: data.description,
-      production_date: new Date().toISOString().split('T')[0]
-    })
-
-    const bouquetId = bouquetResult.data?.id || bouquetResult.id
-
-    // 2. Добавляем компоненты в букет (bouquet_items)
-    for (const item of data.composition) {
-      const payload = {
-        bouquet_id: bouquetId,
-        itemable_id: item.itemable_id,
-        itemable_type: item.itemable_type,
-        flower_id: item.itemable_id,
-        quantity: item.quantity * data.quantity,
-        user_id: data.user_id
-      }
-
-      console.log('=== ОТПРАВКА В create_bouquet_item ===')
-      console.log('Payload:', JSON.stringify(payload, null, 2))
-
-      await dataStore.create_bouquet_item(payload)
-    }
-
-    // 3. Списываем компоненты со склада
-    for (const item of data.composition) {
-      if (item.itemable_type === 'flower') {
-        const flower = dataStore.flowers.find(f => f.id === item.itemable_id)
-        const newQty = (flower.quantity || 0) - (item.quantity * data.quantity)
-        await dataStore.update_flower(flower.id, { quantity: newQty })
-      } else if (item.itemable_type === 'material') {
-        const material = dataStore.materials.find(m => m.id === item.itemable_id)
-        const newQty = (material.quantity || 0) - (item.quantity * data.quantity)
-        await dataStore.update_material(material.id, { quantity: newQty })
-      }
-    }
-
-    closeCreateBouquetModal()
-    await loadData()
-    alert('Букет успешно собран!')
-  } catch (error) {
-    console.error('Ошибка сборки букета:', error)
-    if (error.response?.data?.errors) {
-      console.error('Ошибки валидации:', error.response.data.errors)
-      alert('Ошибка: ' + JSON.stringify(error.response.data.errors))
-    } else {
-      alert('Ошибка при сборке букета')
-    }
-  }
+const openCreateBouquetModal = () => {
+  bouquetData.value = getEmptyBouquetData()
+  showCreateBouquetModal.value = true
 }
 
-// Удалить товар
-const deleteProduct = async (product) => {
-  if (confirm(`Удалить товар "${product.name}"?`)) {
-    try {
-      if (activeTypeTab.value === 'components') {
-        await dataStore.delete_flower(product.id)
-      } else if (activeTypeTab.value === 'bouquets') {
-        await dataStore.delete_bouquet(product.id)
-      } else if (activeTypeTab.value === 'materials') {
-        await dataStore.delete_material(product.id)
-      }
-      await loadData()
-    } catch (error) {
-      console.error('Ошибка удаления:', error)
-    }
-  }
+const closeCreateBouquetModal = () => {
+  showCreateBouquetModal.value = false
+  bouquetData.value = getEmptyBouquetData()
 }
 
-// Получить класс для количества
+// доп функции
 const getQuantityClass = (quantity) => {
   if (!quantity || quantity <= 0) return 'out-of-stock'
   if (quantity < 10) return 'low-stock'
   return 'in-stock'
 }
 
-// Загрузка при монтировании
+const getTypeName = () => {
+  const names = {
+    components: 'Цветок',
+    bouquets: 'Букет',
+    materials: 'Материал'
+  }
+  return names[activeTypeTab.value] || ''
+}
+
+
 onMounted(() => {
   loadData()
 })
@@ -709,15 +546,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* Верхняя панель */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f9cffd;
-}
 
 .top-bar h1 {
   margin: 0;
@@ -725,84 +553,6 @@ onMounted(() => {
   font-weight: 700;
   color: #f9cffd;
   letter-spacing: -0.5px;
-}
-
-/* Навигация */
-.nav-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: #f5f5f7;
-  padding: 0.3rem;
-  border-radius: 60px;
-}
-
-.nav-link {
-  padding: 0.6rem 1.5rem;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5b4e;
-  border-radius: 40px;
-  transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.nav-link:hover {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-  transform: translateY(-2px);
-}
-
-.nav-link.active {
-  background: linear-gradient(135deg, #d9eb61 0%, #f9cffd 100%);
-  color: #2c3e2f;
-}
-
-/* Правая панель */
-.search-profile {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.user-name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #2c3e2f;
-  background: #f9cffd30;
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.user-role {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: #000000;
-}
-
-.logout-btn {
-  padding: 0.5rem 1.2rem;
-  background: #d9eb61;
-  text-decoration: none;
-  border-radius: 40px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e2f;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #c4db3a;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px #d9eb6180;
 }
 
 /* Заголовок раздела */
