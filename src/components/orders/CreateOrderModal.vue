@@ -1,134 +1,172 @@
 <template>
   <div v-if="show" class="modal-overlay" @click="close">
     <div class="modal-content large" @click.stop>
-      <div class="modal-header">
-        <h3>Новый заказ</h3>
-        <button class="close-btn" @click="close">✕</button>
+    <div class="modal-header">
+      <h3>Новый заказ</h3>
+      <button class="close-btn" @click="close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Тип доставки:</label>
+        <select v-model="localOrder.delivery_type" class="form-input">
+          <option value="pickup">Самовывоз</option>
+          <option value="delivery">Доставка</option>
+        </select>
       </div>
 
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Тип доставки:</label>
-          <select v-model="localOrder.delivery_type" class="form-input">
-            <option value="pickup">Самовывоз</option>
-            <option value="delivery">Доставка</option>
-          </select>
-        </div>
+      <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
+        <label>Адрес доставки:</label>
+        <textarea v-model="localOrder.delivery_address" class="form-input" rows="2" placeholder="г. Москва, ул. Цветочная, д. 1"></textarea>
+      </div>
 
-        <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
-          <label>Адрес доставки:</label>
-          <textarea v-model="localOrder.delivery_address" class="form-input" rows="2" placeholder="г. Москва, ул. Цветочная, д. 1"></textarea>
-        </div>
+      <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
+        <label>Курьер:</label>
+        <select v-model="localOrder.courier_id" class="form-input">
+          <option :value="null">Выберите курьера</option>
+          <option v-for="user in couriers" :key="user.id" :value="user.id">
+            {{ getUserFullName(user) }}
+          </option>
+        </select>
+      </div>
 
-        <div class="form-group" v-if="localOrder.delivery_type === 'delivery'">
-          <label>Курьер:</label>
-          <select v-model="localOrder.courier_id" class="form-input">
-            <option :value="null">Выберите курьера</option>
-            <option v-for="user in couriers" :key="user.id" :value="user.id">
-              {{ getUserFullName(user) }}
-            </option>
-          </select>
+      <!-- Поиск клиента по телефону -->
+      <div class="form-group">
+        <label>Поиск клиента по телефону:</label>
+        <div class="search-client-row">
+          <input
+            v-model="searchPhone"
+            type="text"
+            class="form-input"
+            placeholder="+7 999 123-45-67"
+            @input="searchClientByPhone"
+          >
+          <button @click="searchClientByPhone" class="search-btn">Поиск</button>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label>Сотрудник:</label>
-          <select v-model="localOrder.user_id" class="form-input">
-            <option :value="null">Выберите сотрудника</option>
-            <option v-for="user in users" :key="user.id" :value="user.id">
-              {{ getUserFullName(user) }}
-            </option>
-          </select>
+      <!-- Найденный клиент -->
+      <div v-if="foundClient" class="found-client">
+        <div class="client-info">
+          <span class="client-name">{{ foundClient.surname }} {{ foundClient.name }}</span>
+          <span class="client-phone">{{ foundClient.phone }}</span>
         </div>
-        <div class="form-group">
-          <label>Клиент:</label>
-          <select v-model="localOrder.client_id" class="form-input">
-            <option :value="null">Выберите клиента</option>
-            <option v-for="client in clients" :key="client.id" :value="client.id">
-              {{ getClientName(client) }}
-            </option>
-          </select>
-        </div>
+        <button @click="selectFoundClient" class="select-client-btn">Выбрать</button>
+      </div>
 
-        <div class="form-group">
-          <label>Имя (новый клиент):</label>
-          <input v-model="localOrder.client_name" type="text" class="form-input" placeholder="Введите имя">
+      <!-- Если клиент уже выбран - показываем его данные -->
+      <div v-if="localOrder.client_id" class="selected-client">
+        <div class="client-info">
+          <span class="client-name">{{ getSelectedClientName() }}</span>
+          <span class="client-phone">{{ getSelectedClientPhone() }}</span>
         </div>
+        <button @click="clearSelectedClient" class="clear-client-btn">✕</button>
+      </div>
 
-        <div class="form-group">
-          <label>Телефон (новый клиент):</label>
-          <input v-model="localOrder.client_phone" type="text" class="form-input" placeholder="+7 XXX XXX-XX-XX">
+      <div class="form-group" v-if="!localOrder.client_id && !foundClient">
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" v-model="localOrder.create_new_client">
+            Создать нового клиента
+          </label>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label>Дата:</label>
-          <input v-model="localOrder.delivery_date" type="date" class="form-input">
-        </div>
-
-        <div class="form-group">
-          <label>Время:</label>
-          <input v-model="localOrder.delivery_time" type="time" class="form-input">
-        </div>
-
-        <div class="form-group">
-          <label>Способ оплаты:</label>
-          <select v-model="localOrder.payment_method" class="form-input">
-            <option :value="null">Не выбрано</option>
-            <option value="cash">Наличные</option>
-            <option value="card">Карта</option>
-            <option value="qr">QR-код</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Комментарий:</label>
-          <textarea v-model="localOrder.comment" class="form-input" rows="3"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Товары:</label>
-          <div class="items-list">
-            <div v-for="(item, index) in localOrder.items" :key="index" class="item-row">
-              <select v-model="item.type" class="item-type">
-                <option value="flower">Цветок</option>
-                <option value="bouquet">Букет</option>
-                <option value="material">Материал</option>
-              </select>
-              <select v-model="item.id" class="item-select">
-                <option :value="null">Выберите товар</option>
-                <template v-if="item.type === 'flower'">
-                  <option v-for="flower in flowers" :key="flower.id" :value="flower.id">
-                    {{ flower.name }} - {{ flower.price }} руб.
-                  </option>
-                </template>
-                <template v-else-if="item.type === 'bouquet'">
-                  <option v-for="bouquet in bouquets" :key="bouquet.id" :value="bouquet.id">
-                    {{ bouquet.name }} - {{ bouquet.price }} руб.
-                  </option>
-                </template>
-                <template v-else-if="item.type === 'material'">
-                  <option v-for="material in materials" :key="material.id" :value="material.id">
-                    {{ material.name }} - {{ material.price }} руб.
-                  </option>
-                </template>
-              </select>
-              <input v-model.number="item.quantity" type="number" min="1" class="item-quantity" placeholder="Кол-во">
-              <button @click="removeItem(index)" class="remove-item-btn">Удалить</button>
-            </div>
-            <button @click="addItem" class="add-item-btn">Добавить товар</button>
+      <!-- Поля для нового клиента -->
+      <div class="new-client-fields" v-if="(localOrder.create_new_client || showNewClientForm) && !localOrder.client_id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Фамилия:</label>
+            <input v-model="localOrder.new_client.surname" type="text" class="form-input" placeholder="Иванов">
+          </div>
+          <div class="form-group">
+            <label>Имя:</label>
+            <input v-model="localOrder.new_client.name" type="text" class="form-input" placeholder="Иван">
           </div>
         </div>
+        <div class="form-group">
+          <label>Телефон:</label>
+          <input v-model="localOrder.new_client.phone" type="text" class="form-input" placeholder="+7 999 123-45-67">
+        </div>
+        <div class="form-group">
+          <label>Email (необязательно):</label>
+          <input v-model="localOrder.new_client.email" type="email" class="form-input" placeholder="client@mail.ru">
+        </div>
       </div>
 
-      <div class="modal-footer">
-        <button @click="close" class="cancel-btn">Отмена</button>
-        <button @click="save" class="confirm-btn">Создать заказ</button>
+      <div class="form-group">
+        <label>Дата доставки:</label>
+        <input v-model="localOrder.delivery_date" type="date" class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label>Время доставки:</label>
+        <input v-model="localOrder.delivery_time" type="time" class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label>Способ оплаты:</label>
+        <select v-model="localOrder.payment_method" class="form-input">
+          <option :value="null">Не выбрано</option>
+          <option value="cash">Наличные</option>
+          <option value="card">Карта</option>
+          <option value="qr">QR-код</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Комментарий:</label>
+        <textarea v-model="localOrder.comment" class="form-input" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Товары:</label>
+        <div class="items-list">
+          <div v-for="(item, index) in localOrder.items" :key="index" class="item-row">
+            <select v-model="item.type" class="item-type">
+              <option value="flower">Цветок</option>
+              <option value="bouquet">Букет</option>
+              <option value="material">Материал</option>
+            </select>
+            <select v-model="item.id" class="item-select">
+              <option :value="null">Выберите товар</option>
+              <template v-if="item.type === 'flower'">
+                <option v-for="flower in flowers" :key="flower.id" :value="flower.id">
+                  {{ flower.name }} - {{ flower.price }} руб.
+                </option>
+              </template>
+              <template v-else-if="item.type === 'bouquet'">
+                <option v-for="bouquet in bouquets" :key="bouquet.id" :value="bouquet.id">
+                  {{ bouquet.name }} - {{ bouquet.price }} руб.
+                </option>
+              </template>
+              <template v-else-if="item.type === 'material'">
+                <option v-for="material in materials" :key="material.id" :value="material.id">
+                  {{ material.name }} - {{ material.price }} руб.
+                </option>
+              </template>
+            </select>
+            <input v-model.number="item.quantity" type="number" min="1" class="item-quantity" placeholder="Кол-во">
+            <button @click="removeItem(index)" class="remove-item-btn">Удалить</button>
+          </div>
+          <button @click="addItem" class="add-item-btn">+ Добавить товар</button>
+        </div>
       </div>
     </div>
+
+    <div class="modal-footer">
+      <button @click="close" class="cancel-btn">Отмена</button>
+      <button @click="save" class="confirm-btn">Создать заказ</button>
+    </div>
+  </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useDataStore } from '../../stores/dataStore'
+
+const dataStore = useDataStore()
 
 const props = defineProps({
   show: Boolean,
@@ -157,6 +195,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
+// Поиск клиента
+const searchPhone = ref('')
+const foundClient = ref(null)
+const showNewClientForm = ref(false)
+
 // начальные данные
 const getEmptyOrder = (selectedDate) => ({
   client_id: null,
@@ -171,9 +214,16 @@ const getEmptyOrder = (selectedDate) => ({
   delivery_address: '',
   courier_id: null,
   assembly_date: '',
+  create_new_client: false,
+  new_client: {
+    surname: '',
+    name: '',
+    patronymic: '-',
+    phone: '',
+    email: ''
+  },
   items: [{ type: 'flower', id: null, quantity: 1 }]
 })
-
 
 const couriers = computed(() => {
   if (!props.users) return []
@@ -205,16 +255,65 @@ const getUserFullName = (user) => {
   return name || user.email?.split('@')[0] || 'Сотрудник'
 }
 
+// Поиск клиента по телефону
+const searchClientByPhone = async () => {
+  if (!searchPhone.value || searchPhone.value.length < 10) {
+    foundClient.value = null
+    return
+  }
+
+  const cleanSearch = searchPhone.value.replace(/\s/g, '')
+  const client = props.clients.find(c =>
+    c.phone && c.phone.replace(/\s/g, '').includes(cleanSearch)
+  )
+
+  if (client) {
+    foundClient.value = client
+    localOrder.value.client_name = `${client.surname} ${client.name}`
+    localOrder.value.client_phone = client.phone
+  } else {
+    foundClient.value = null
+    showNewClientForm.value = true
+    localOrder.value.create_new_client = true
+    localOrder.value.new_client.phone = searchPhone.value
+  }
+}
+
+// Выбрать найденного клиента
+const selectFoundClient = () => {
+  if (foundClient.value) {
+    localOrder.value.client_id = foundClient.value.id
+    localOrder.value.client_name = `${foundClient.value.surname} ${foundClient.value.name}`
+    localOrder.value.client_phone = foundClient.value.phone
+    foundClient.value = null
+    searchPhone.value = ''
+    localOrder.value.create_new_client = false
+    showNewClientForm.value = false
+  }
+}
+
 // Сброс формы
 const resetForm = () => {
   localOrder.value = getEmptyOrder(props.selectedDate)
+  searchPhone.value = ''
+  foundClient.value = null
+  showNewClientForm.value = false
 }
 
 // Валидация формы
 const isValid = () => {
-  if (!localOrder.value.client_id && !localOrder.value.client_name) {
-    alert('Укажите клиента (выберите из списка или введите имя)')
+  // Проверяем клиента
+  if (!localOrder.value.client_id && !localOrder.value.create_new_client) {
+    alert('Укажите клиента (выберите из списка или создайте нового)')
     return false
+  }
+
+  // Если создаем нового клиента - проверяем обязательные поля
+  if (localOrder.value.create_new_client) {
+    if (!localOrder.value.new_client.surname || !localOrder.value.new_client.name) {
+      alert('Заполните фамилию и имя нового клиента')
+      return false
+    }
   }
 
   if (localOrder.value.items.length === 0) {
@@ -237,8 +336,69 @@ const isValid = () => {
   return true
 }
 
+// Получить имя выбранного клиента
+const getSelectedClientName = () => {
+  const client = props.clients.find(c => c.id === localOrder.value.client_id)
+  if (client) return `${client.surname} ${client.name}`
+  return localOrder.value.client_name || 'Клиент'
+}
+
+// Получить телефон выбранного клиента
+const getSelectedClientPhone = () => {
+  const client = props.clients.find(c => c.id === localOrder.value.client_id)
+  if (client) return client.phone
+  return localOrder.value.client_phone || ''
+}
+
+// Сбросить выбранного клиента
+const clearSelectedClient = () => {
+  localOrder.value.client_id = null
+  localOrder.value.client_name = ''
+  localOrder.value.client_phone = ''
+  searchPhone.value = ''
+  foundClient.value = null
+  showNewClientForm.value = false
+}
+
 // Подготовка данных для отправки
-const prepareOrderData = () => {
+const prepareOrderData = async () => {
+  // Если найден клиент через поиск, но не выбран
+  if (foundClient.value && !localOrder.value.client_id) {
+    alert('Найден клиент, но не выбран. Нажмите кнопку "Выбрать" или создайте нового.')
+    return null
+  }
+
+  let finalClientId = localOrder.value.client_id
+
+  // Если создаем нового клиента
+  if (!finalClientId && localOrder.value.create_new_client) {
+    const surname = localOrder.value.new_client.surname || 'Не указана'
+    const name = localOrder.value.new_client.name || 'Не указано'
+    const patronymic = localOrder.value.new_client.patronymic || '-'
+    const email = localOrder.value.new_client.email || `client_${Date.now()}@temp.com`
+
+    const newClientData = {
+      surname: surname,
+      name: name,
+      patronymic: patronymic,
+      email: email,
+      phone: localOrder.value.new_client.phone || null,
+      address: null,
+      birth_date: null,
+      comments: 'Создан автоматически при заказе'
+    }
+
+    try {
+      const result = await dataStore.create_client(newClientData)
+      finalClientId = result.data?.id || result.id
+      localOrder.value.create_new_client = false
+    } catch (error) {
+      console.error('Ошибка создания клиента:', error)
+      alert('Не удалось создать клиента. Проверьте данные.')
+      return null
+    }
+  }
+
   const orderData = {
     type: 'order',
     items: localOrder.value.items.map(item => ({
@@ -248,9 +408,13 @@ const prepareOrderData = () => {
     }))
   }
 
-  //
+  // Добавляем client_id, если есть
+  if (finalClientId) {
+    orderData.client_id = parseInt(finalClientId)
+  }
+
+  // Остальные поля
   const fieldsMap = {
-    client_id: (val) => parseInt(val),
     courier_id: (val) => parseInt(val),
     client_name: (val) => val,
     client_phone: (val) => val,
@@ -281,14 +445,12 @@ const removeItem = (index) => {
   localOrder.value.items.splice(index, 1)
 }
 
-const save = () => {
+const save = async () => {
   if (!isValid()) return
 
   try {
-    const orderData = prepareOrderData()
-    console.log('=== ОТЛАДКА delivery_type ===')
-    console.log('localOrder.value.delivery_type:', localOrder.value.delivery_type)
-    console.log('Тип значения:', typeof localOrder.value.delivery_type)
+    const orderData = await prepareOrderData()
+    if (!orderData) return
 
     emit('save', orderData)
   } catch (error) {
@@ -300,7 +462,6 @@ const save = () => {
 const close = () => {
   emit('close')
 }
-
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -317,6 +478,135 @@ watch(() => props.selectedDate, (newDate) => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+/* Все стили остаются без изменений */
+.search-client-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-btn {
+  padding: 0.7rem 1.2rem;
+  background: #d9eb61;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.search-btn:hover {
+  background: #c4db3a;
+  transform: scale(1.02);
+}
+
+.found-client {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: #f9cffd30;
+  border-radius: 20px;
+  margin: 0.5rem 0 1rem 0;
+
+}
+
+.client-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-name {
+  font-weight: 600;
+  color: #2c3e2f;
+}
+
+.client-phone {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.select-client-btn {
+  padding: 0.4rem 1rem;
+  background: #d9eb61;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.select-client-btn:hover {
+  background: #c4db3a;
+  transform: scale(1.05);
+}
+
+.checkbox-group {
+  margin: 0.5rem 0;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: normal;
+  color: #2c3e2f;
+}
+
+.checkbox-group input {
+  width: auto;
+  cursor: pointer;
+  accent-color: #d9eb61;
+}
+
+.new-client-fields {
+  margin-top: 0.8rem;
+  padding: 1rem;
+  background: #f9f9fb;
+  border-radius: 20px;
+  border: 1px solid #f5f5f7;
+}
+
+.selected-client {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: #d9eb6130;
+  border-radius: 20px;
+  margin: 0.5rem 0 1rem 0;
+
+}
+
+.clear-client-btn {
+  padding: 0.2rem 0.6rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.3s ease;
+}
+
+.clear-client-btn:hover {
+  color: #e85d4a;
+  transform: scale(1.1);
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.form-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+
+
 
 .modal-overlay {
   position: fixed;
@@ -343,7 +633,6 @@ watch(() => props.selectedDate, (newDate) => {
   font-family: 'Inter', sans-serif;
 }
 
-/* Скроллбар */
 .modal-content::-webkit-scrollbar {
   width: 6px;
 }
@@ -467,7 +756,6 @@ select.form-input {
   background-size: 1rem;
 }
 
-/* Список товаров */
 .items-list {
   border: 2px solid #f5f5f7;
   border-radius: 20px;
@@ -571,7 +859,6 @@ select.form-input {
   transform: translateY(-1px);
 }
 
-/* Кнопки футера */
 .cancel-btn, .confirm-btn {
   padding: 0.6rem 1.5rem;
   border: none;

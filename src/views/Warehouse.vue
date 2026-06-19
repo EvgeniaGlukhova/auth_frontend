@@ -194,10 +194,6 @@ const typeTabs = [
   { id: 'materials', name: 'Материалы' }
 ]
 
-
-
-
-
 const allProducts = computed(() => {
   const flowers = (dataStore.flowers || []).map(f => ({
     ...f,

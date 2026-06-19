@@ -184,7 +184,9 @@ const visibleDays = computed(() => {
   const month = currentMonth.value
   const days = []
 
-  for (let i = 1; i <= 15; i++) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month, i)
     const weekday = date.toLocaleDateString('ru-RU', { weekday: 'short' })
     days.push({
