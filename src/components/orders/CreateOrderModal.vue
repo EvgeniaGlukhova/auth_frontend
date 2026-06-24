@@ -95,12 +95,12 @@
       </div>
 
       <div class="form-group">
-        <label>Дата доставки:</label>
+        <label>Дата:</label>
         <input v-model="localOrder.delivery_date" type="date" class="form-input">
       </div>
 
       <div class="form-group">
-        <label>Время доставки:</label>
+        <label>Время:</label>
         <input v-model="localOrder.delivery_time" type="time" class="form-input">
       </div>
 
