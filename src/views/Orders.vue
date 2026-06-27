@@ -147,6 +147,7 @@
       @close="closeDetailsModal"
       @status-change="updateOrderStatus"
       @complete-order="completeOrderFromModal"
+      @cancel-order="cancelOrder"
     />
 
     <!-- Сообщение об ошибке -->
@@ -238,15 +239,19 @@ const readyOrders = computed(() => {
 // Завершенные заказы (за выбранную дату)
 const completedOrders = computed(() => {
   return dataStore.orders.filter(order => {
-    if (order.status !== 'completed') return false
+    if (order.status !== 'completed' && order.status !== 'cancelled') return false
 
-    // Для продаж (sale) - по дате создания
+    // Получаем дату завершения
+    const completedDate = order.updated_at?.split('T')[0]
+
+    // Для продаж (sale) - по дате создания (created_at)
     if (order.type === 'sale') {
-      return order.created_at?.split('T')[0] === selectedDate.value
+      const createdDate = order.created_at?.split('T')[0]
+      return createdDate === selectedDate.value
     }
 
-    // Для заказов (order) - по дате завершения
-    return order.updated_at?.split('T')[0] === selectedDate.value
+    // Для заказов (order) - по дате завершения (updated_at)
+    return completedDate === selectedDate.value
   })
 })
 
@@ -365,6 +370,23 @@ const loadAllData = async () => {
     dataStore.get_materials(),
     dataStore.get_users()
   ])
+}
+
+/// Отменить заказ
+const cancelOrder = async (orderId) => {
+  if (confirm('Отменить заказ? Это действие нельзя отменить.')) {
+    try {
+      await dataStore.update_order_status(orderId, 'cancelled')
+      await loadOrdersForDate()
+      if (selectedOrder.value?.id === orderId) {
+        closeDetailsModal()
+      }
+      alert('Заказ отменен')
+    } catch (error) {
+      console.error('Ошибка отмены заказа:', error)
+      alert('Ошибка при отмене заказа')
+    }
+  }
 }
 
 

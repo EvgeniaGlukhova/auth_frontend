@@ -45,26 +45,30 @@ const router = createRouter({
 })
 
 // Защита маршрутов - НОВАЯ ВЕРСИЯ (без next)
+// router.beforeEach(async (to, from) => {
+//   const authStore = useAuthStore()
+//
+//   // Восстанавливаем сессию, если есть токен
+//   if (!authStore.isAuthenticated && localStorage.getItem('access_token')) {
+//     authStore.restoreSession()
+//     await authStore.fetchUser()
+//   }
+//
+//   // Если маршрут требует авторизации, а пользователь не авторизован
+//   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+//     return '/login'
+//   }
+//
+//   // Если маршрут для гостей (логин), а пользователь авторизован
+//   if (to.meta.requiresGuest && authStore.isAuthenticated) {
+//     return '/dashboard'
+//   }
+//
+//   // Разрешаем переход
+//   return true
+// })
+  // всегда пускаем - времменно
 router.beforeEach(async (to, from) => {
-  const authStore = useAuthStore()
-
-  // Восстанавливаем сессию, если есть токен
-  if (!authStore.isAuthenticated && localStorage.getItem('access_token')) {
-    authStore.restoreSession()
-    await authStore.fetchUser()
-  }
-
-  // Если маршрут требует авторизации, а пользователь не авторизован
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return '/login'
-  }
-
-  // Если маршрут для гостей (логин), а пользователь авторизован
-  if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    return '/dashboard'
-  }
-
-  // Разрешаем переход
   return true
 })
 

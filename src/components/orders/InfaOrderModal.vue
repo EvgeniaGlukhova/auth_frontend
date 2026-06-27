@@ -116,6 +116,13 @@
 
       <div class="modal-footer">
         <button
+          v-if="canCancel"
+          @click="cancelOrder"
+          class="action-status-btn cancel-btn"
+        >
+          Отменить заказ
+        </button>
+        <button
           v-if="canChangeStatus"
           @click="changeStatus"
           class="action-status-btn"
@@ -137,7 +144,7 @@ const props = defineProps({
   order: Object
 })
 
-const emit = defineEmits(['close', 'status-change', 'complete-order'])
+const emit = defineEmits(['close', 'status-change', 'complete-order','cancel-order'])
 
 
 const canChangeStatus = computed(() => {
@@ -276,6 +283,22 @@ const changeStatus = () => {
 
   if (action.nextStatus) {
     emit('status-change', props.order.id, action.nextStatus)
+  }
+}
+
+
+const canCancel = computed(() => {
+  if (!props.order) return false
+  const status = props.order.status
+  return ['new', 'assembly', 'ready'].includes(status)
+})
+
+// Отменить заказ
+const cancelOrder = () => {
+  if (!props.order) return
+
+  if (confirm(`Отменить заказ #${props.order.id}? Это действие нельзя отменить.`)) {
+    emit('cancel-order', props.order.id)
   }
 }
 
@@ -590,5 +613,19 @@ const close = () => {
 .close-modal-btn:hover {
   background: #e8e8ec;
   transform: translateY(-1px);
+}
+
+/* Кнопка Отменить */
+.cancel-btn {
+  background: #ffffff;
+  border: 2px solid #f44336;
+  color: #c62828;
+}
+
+.cancel-btn:hover {
+  background: #f44336;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
 }
 </style>

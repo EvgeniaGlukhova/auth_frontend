@@ -12,7 +12,7 @@
       <input
         type="text"
         v-model="searchQuery"
-        placeholder="Поиск по имени или телефону..."
+        placeholder="Поиск по имени"
         class="search-input"
         @keyup.enter="applySearch"
       >
