@@ -39,6 +39,7 @@ const routes = [
   }
 ]
 
+console.log('ROUTER LOADED')
 const router = createRouter({
   history: createWebHistory(),
   routes

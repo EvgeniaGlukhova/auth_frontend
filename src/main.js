@@ -16,3 +16,4 @@ const authStore = useAuthStore()
 authStore.restoreSession()
 
 app.mount('#app')
+console.log('ROUTER LOADED')
