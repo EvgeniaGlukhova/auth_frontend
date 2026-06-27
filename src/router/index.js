@@ -5,8 +5,9 @@ import DashboardPage from '../views/DashboardPage.vue'
 const routes = [
   {
     path: '/login',
-    component: () => import('../views/Login.vue'),
-    meta: { requiresGuest: true }  // только для неавторизованных
+    // component: () => import('../views/Login.vue'),
+    // meta: { requiresGuest: true }  // только для неавторизованных
+    redirect: '/dashboard'
   },
   {
     path: '/',
